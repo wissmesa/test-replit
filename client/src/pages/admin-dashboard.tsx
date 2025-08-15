@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { UserWithApartment, Apartment, PagoWithRelations } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -56,43 +57,19 @@ export default function AdminDashboard() {
   }, [user, authLoading, toast]);
 
   // Fetch stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ["/api/stats"],
     enabled: !!user && user.tipoUsuario === 'admin',
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Redirigiendo al login...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    }
   });
 
   // Fetch payments
-  const { data: pagos, isLoading: pagosLoading } = useQuery({
+  const { data: pagos, isLoading: pagosLoading } = useQuery<PagoWithRelations[]>({
     queryKey: ["/api/pagos"],
     enabled: !!user && user.tipoUsuario === 'admin',
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Redirigiendo al login...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    }
   });
 
   // Fetch apartments
-  const { data: apartments } = useQuery({
+  const { data: apartments } = useQuery<Apartment[]>({
     queryKey: ["/api/apartments"],
     enabled: !!user && user.tipoUsuario === 'admin',
   });

@@ -50,7 +50,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
+    const result = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
@@ -61,7 +61,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return user;
+    return (result as any[])[0] as User;
   }
 
   // Condominium specific operations
@@ -75,8 +75,8 @@ export class DatabaseStorage implements IStorage {
     if (!user) return undefined;
     
     return {
-      ...user.users,
-      apartment: user.apartments || undefined,
+      ...(user as any).users,
+      apartment: (user as any).apartments || undefined,
     };
   }
 
@@ -86,18 +86,18 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .leftJoin(apartments, eq(users.idApartamento, apartments.id));
     
-    return results.map(result => ({
+    return (results as any[]).map((result: any) => ({
       ...result.users,
       apartment: result.apartments || undefined,
     }));
   }
 
   async createCondominiumUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db
+    const result = await db
       .insert(users)
       .values(user)
       .returning();
-    return newUser;
+    return (result as any[])[0] as User;
   }
 
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
@@ -111,7 +111,8 @@ export class DatabaseStorage implements IStorage {
 
   // Apartment operations
   async getApartments(): Promise<Apartment[]> {
-    return await db.select().from(apartments);
+    const result = await db.select().from(apartments);
+    return (result as any[]) as Apartment[];
   }
 
   async getApartment(id: string): Promise<Apartment | undefined> {
@@ -120,11 +121,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createApartment(apartmentData: InsertApartment): Promise<Apartment> {
-    const [apartment] = await db
+    const result = await db
       .insert(apartments)
       .values(apartmentData)
       .returning();
-    return apartment;
+    return (result as any[])[0] as Apartment;
   }
 
   async updateApartment(id: string, apartmentData: Partial<InsertApartment>): Promise<Apartment> {
@@ -190,20 +191,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPago(pagoData: InsertPago): Promise<Pago> {
-    const [pago] = await db
+    const result = await db
       .insert(pagos)
-      .values(pagoData)
+      .values(pagoData as any)
       .returning();
-    return pago;
+    return (result as any[])[0] as Pago;
   }
 
   async updatePago(id: string, pagoData: Partial<InsertPago>): Promise<Pago> {
+    const updateData = { ...pagoData, updatedAt: new Date() };
     const [pago] = await db
       .update(pagos)
-      .set({ ...pagoData, updatedAt: new Date() })
+      .set(updateData as any)
       .where(eq(pagos.id, id))
       .returning();
-    return pago;
+    return pago as Pago;
   }
 
   async deletePago(id: string): Promise<void> {

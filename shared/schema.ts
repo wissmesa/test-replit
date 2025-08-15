@@ -26,7 +26,7 @@ export const sessions = pgTable(
 );
 
 // User storage table.
-export const users = pgTable("users", {
+export const users: any = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
@@ -49,7 +49,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const apartments = pgTable("apartments", {
+export const apartments: any = pgTable("apartments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   piso: integer("piso").notNull(),
   numero: varchar("numero").notNull().unique(),
@@ -74,7 +74,7 @@ export const pagos = pgTable("pagos", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ one, many }) => ({
+export const usersRelations: any = relations(users, ({ one, many }) => ({
   apartment: one(apartments, {
     fields: [users.idApartamento],
     references: [apartments.id],
@@ -82,7 +82,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   pagos: many(pagos),
 }));
 
-export const apartmentsRelations = relations(apartments, ({ one, many }) => ({
+export const apartmentsRelations: any = relations(apartments, ({ one, many }) => ({
   user: one(users, {
     fields: [apartments.idUsuario],
     references: [users.id],

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { UserWithApartment, PagoWithRelations } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,15 +30,15 @@ import {
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
-const profileFormSchema = insertUserSchema.pick({
-  primerNombre: true,
-  segundoNombre: true,
-  primerApellido: true,
-  segundoApellido: true,
-  telefono: true,
-  correo: true,
-  tipoIdentificacion: true,
-  identificacion: true,
+const profileFormSchema = z.object({
+  primerNombre: z.string().min(1, "Primer nombre es requerido"),
+  segundoNombre: z.string().optional(),
+  primerApellido: z.string().min(1, "Primer apellido es requerido"),
+  segundoApellido: z.string().optional(),
+  telefono: z.string().min(1, "Teléfono es requerido"),
+  correo: z.string().email("Correo inválido"),
+  tipoIdentificacion: z.enum(["pasaporte", "cedula", "rif"]),
+  identificacion: z.string().min(1, "Identificación es requerida"),
 });
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
@@ -64,21 +65,9 @@ export default function TenantDashboard() {
   }, [user, authLoading, toast]);
 
   // Fetch user's payments
-  const { data: pagos, isLoading: pagosLoading } = useQuery({
+  const { data: pagos, isLoading: pagosLoading } = useQuery<PagoWithRelations[]>({
     queryKey: ["/api/pagos"],
     enabled: !!user && user.tipoUsuario === 'inquilino',
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "No autorizado",
-          description: "Redirigiendo al login...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    }
   });
 
   // Profile form
