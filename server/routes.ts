@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import session from "express-session";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const session = require("express-session");
 import { storage } from "./storage";
 import { insertUserSchema, insertApartmentSchema, insertPagoSchema } from "@shared/schema";
 import { z } from "zod";
@@ -11,7 +13,9 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-const registerSchema = insertUserSchema.extend({
+const registerSchema = insertUserSchema.omit({
+  contrasena: true,
+}).extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
