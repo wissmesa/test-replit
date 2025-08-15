@@ -134,8 +134,17 @@ export default function TenantDashboard() {
     },
   });
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout', {});
+      // Clear any cached data and redirect to login
+      queryClient.clear();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Force redirect even if logout fails
+      window.location.href = "/";
+    }
   };
 
   const getStatusBadge = (estado: string) => {
