@@ -28,10 +28,10 @@ export interface IStorage {
   
   // Apartment operations
   getApartments(): Promise<Apartment[]>;
-  getApartment(id: string): Promise<Apartment | undefined>;
+  getApartment(id: number): Promise<Apartment | undefined>;
   createApartment(apartment: InsertApartment): Promise<Apartment>;
-  updateApartment(id: string, apartment: Partial<InsertApartment>): Promise<Apartment>;
-  deleteApartment(id: string): Promise<void>;
+  updateApartment(id: number, apartment: Partial<InsertApartment>): Promise<Apartment>;
+  deleteApartment(id: number): Promise<void>;
   
   // Payment operations
   getPagos(): Promise<PagoWithRelations[]>;
@@ -120,7 +120,7 @@ export class DatabaseStorage implements IStorage {
     return (result as any[]) as Apartment[];
   }
 
-  async getApartment(id: string): Promise<Apartment | undefined> {
+  async getApartment(id: number): Promise<Apartment | undefined> {
     const [apartment] = await db.select().from(apartments).where(eq(apartments.id, id));
     return apartment;
   }
@@ -133,7 +133,7 @@ export class DatabaseStorage implements IStorage {
     return (result as any[])[0] as Apartment;
   }
 
-  async updateApartment(id: string, apartmentData: Partial<InsertApartment>): Promise<Apartment> {
+  async updateApartment(id: number, apartmentData: Partial<InsertApartment>): Promise<Apartment> {
     const [apartment] = await db
       .update(apartments)
       .set({ ...apartmentData, updatedAt: new Date() })
@@ -142,7 +142,7 @@ export class DatabaseStorage implements IStorage {
     return apartment;
   }
 
-  async deleteApartment(id: string): Promise<void> {
+  async deleteApartment(id: number): Promise<void> {
     await db.delete(apartments).where(eq(apartments.id, id));
   }
 

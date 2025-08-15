@@ -9,6 +9,7 @@ import {
   integer,
   decimal,
   boolean,
+  serial,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -44,14 +45,14 @@ export const users: any = pgTable("users", {
   identificacion: varchar("identificacion").notNull().unique(),
   tipoUsuario: varchar("tipo_usuario").notNull().$type<'admin' | 'inquilino'>(),
   tipoIdentificacion: varchar("tipo_identificacion").notNull().$type<'pasaporte' | 'cedula' | 'rif'>(),
-  idApartamento: varchar("id_apartamento").references(() => apartments.id),
+  idApartamento: integer("id_apartamento").references(() => apartments.id),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const apartments: any = pgTable("apartments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   piso: integer("piso").notNull(),
   numero: varchar("numero").notNull().unique(),
   alicuota: decimal("alicuota", { precision: 10, scale: 2 }).notNull(),
@@ -63,7 +64,7 @@ export const apartments: any = pgTable("apartments", {
 export const pagos = pgTable("pagos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUsuario: varchar("id_usuario").notNull().references(() => users.id),
-  idApartamento: varchar("id_apartamento").notNull().references(() => apartments.id),
+  idApartamento: integer("id_apartamento").notNull().references(() => apartments.id),
   monto: decimal("monto", { precision: 10, scale: 2 }).notNull(),
   fechaVencimiento: timestamp("fecha_vencimiento").notNull(),
   fechaPago: timestamp("fecha_pago"),

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-const session = require("express-session");
+import session from "express-session";
 import { storage } from "./storage";
 import { insertUserSchema, insertApartmentSchema, insertPagoSchema } from "@shared/schema";
 import { z } from "zod";
@@ -209,7 +209,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/apartments/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const apartmentId = req.params.id;
+      const apartmentId = parseInt(req.params.id);
+      if (isNaN(apartmentId)) {
+        return res.status(400).json({ message: "Invalid apartment ID" });
+      }
       const apartmentData = req.body;
       const apartment = await storage.updateApartment(apartmentId, apartmentData);
       res.json(apartment);
@@ -221,7 +224,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/apartments/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const apartmentId = req.params.id;
+      const apartmentId = parseInt(req.params.id);
+      if (isNaN(apartmentId)) {
+        return res.status(400).json({ message: "Invalid apartment ID" });
+      }
       await storage.deleteApartment(apartmentId);
       res.json({ message: "Apartment deleted successfully" });
     } catch (error) {
