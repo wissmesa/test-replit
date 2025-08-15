@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/landing";
+import LoginPage from "@/pages/login";
 import AdminDashboard from "@/pages/admin-dashboard";
 import TenantDashboard from "@/pages/tenant-dashboard";
 
@@ -15,7 +15,7 @@ function Router() {
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <Route path="/" component={LoginPage} />
       ) : (
         <>
           <Route path="/" component={() => {
@@ -24,7 +24,7 @@ function Router() {
             } else if (user?.tipoUsuario === 'inquilino') {
               return <TenantDashboard />;
             } else {
-              return <Landing />;
+              return <LoginPage />;
             }
           }} />
           <Route path="/admin" component={AdminDashboard} />

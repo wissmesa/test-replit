@@ -16,15 +16,15 @@ import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
-  
-  // Condominium specific operations
   getUserByEmail(email: string): Promise<UserWithApartment | undefined>;
   getUsersWithApartments(): Promise<UserWithApartment[]>;
-  createCondominiumUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
+  
+  // Auth operations
+  authenticateUser(email: string, password: string): Promise<UserWithApartment | null>;
   
   // Apartment operations
   getApartments(): Promise<Apartment[]>;
@@ -43,25 +43,10 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations (mandatory for Replit Auth)
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
-  }
-
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const result = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return (result as any[])[0] as User;
   }
 
   // Condominium specific operations
@@ -92,12 +77,32 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createCondominiumUser(user: InsertUser): Promise<User> {
+  async createUser(user: InsertUser): Promise<User> {
     const result = await db
       .insert(users)
       .values(user)
       .returning();
     return (result as any[])[0] as User;
+  }
+
+  async authenticateUser(email: string, password: string): Promise<UserWithApartment | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .leftJoin(apartments, eq(users.idApartamento, apartments.id))
+      .where(eq(users.correo, email));
+    
+    if (!user) return null;
+    
+    const bcrypt = await import('bcrypt');
+    const isValid = await bcrypt.compare(password, (user as any).users.contrasena);
+    
+    if (!isValid) return null;
+    
+    return {
+      ...(user as any).users,
+      apartment: (user as any).apartments || undefined,
+    };
   }
 
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {

@@ -1,23 +1,111 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+const session = require("express-session");
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertUserSchema, insertApartmentSchema, insertPagoSchema } from "@shared/schema";
 import { z } from "zod";
+import { hashPassword, isAuthenticated, isAdmin } from "./auth";
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+const registerSchema = insertUserSchema.extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Session configuration
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'condominium-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
 
   // Auth routes
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      
+      const user = await storage.authenticateUser(email, password);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      req.session.userId = user.id;
+      req.session.userEmail = user.correo;
+      req.session.userType = user.tipoUsuario;
+
+      // Return user without password
+      const { contrasena, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  app.post('/api/auth/register', async (req: any, res) => {
+    try {
+      const userData = registerSchema.parse(req.body);
+      
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password as string);
+      
+      // Create user with hashed password
+      const { password, ...userDataWithoutPassword } = userData;
+      const userToCreate = {
+        ...userDataWithoutPassword,
+        contrasena: hashedPassword
+      } as any;
+
+      const user = await storage.createUser(userToCreate);
+      
+      // Auto-login after registration
+      req.session.userId = user.id;
+      req.session.userEmail = user.correo;
+      req.session.userType = user.tipoUsuario;
+
+      // Return user without password
+      const { contrasena, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error during registration:", error);
+      res.status(400).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req: any, res) => {
+    req.session?.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Could not log out" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserByEmail(req.user.claims.email);
+      const userId = req.session.userId;
+      const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json(user);
+      
+      // Get user with apartment info
+      const userWithApartment = await storage.getUserByEmail(user.correo);
+      if (!userWithApartment) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Return user without password
+      const { contrasena, ...userWithoutPassword } = userWithApartment;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -25,33 +113,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
-  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+  app.post('/api/users', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can create users
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
+      const userData = registerSchema.parse(req.body);
+      
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password as string);
+      
+      // Create user with hashed password
+      const { password, ...userDataWithoutPassword } = userData;
+      const userToCreate = {
+        ...userDataWithoutPassword,
+        contrasena: hashedPassword
+      } as any;
 
-      const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createCondominiumUser(userData);
-      res.json(user);
+      const user = await storage.createUser(userToCreate);
+      
+      // Return user without password
+      const { contrasena, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ message: "Failed to create user" });
     }
   });
 
-  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can view all users
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
       const users = await storage.getUsersWithApartments();
-      res.json(users);
+      
+      // Remove passwords from response
+      const usersWithoutPasswords = users.map((user: any) => {
+        const { contrasena, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      
+      res.json(usersWithoutPasswords);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -60,19 +157,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
+      const userId = req.params.id;
+      const sessionUserId = req.session.userId;
+      const userType = req.session.userType;
+      
       // Users can update their own profile, admins can update any profile
-      if (currentUser.tipoUsuario !== 'admin' && currentUser.id !== req.params.id) {
+      if (userId !== sessionUserId && userType !== 'admin') {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      const userData = insertUserSchema.partial().parse(req.body);
-      const user = await storage.updateUser(req.params.id, userData);
-      res.json(user);
+      const updateData = req.body;
+      
+      // If password is being updated, hash it
+      if (updateData.password) {
+        updateData.contrasena = await hashPassword(updateData.password);
+        delete updateData.password;
+      }
+
+      const user = await storage.updateUser(userId, updateData);
+      
+      // Return user without password
+      const { contrasena, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
@@ -90,14 +196,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/apartments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/apartments', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can create apartments
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
       const apartmentData = insertApartmentSchema.parse(req.body);
       const apartment = await storage.createApartment(apartmentData);
       res.json(apartment);
@@ -107,16 +207,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/apartments/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/apartments/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can update apartments
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
-      const apartmentData = insertApartmentSchema.partial().parse(req.body);
-      const apartment = await storage.updateApartment(req.params.id, apartmentData);
+      const apartmentId = req.params.id;
+      const apartmentData = req.body;
+      const apartment = await storage.updateApartment(apartmentId, apartmentData);
       res.json(apartment);
     } catch (error) {
       console.error("Error updating apartment:", error);
@@ -124,15 +219,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/apartments/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/apartments/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can delete apartments
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
-      await storage.deleteApartment(req.params.id);
+      const apartmentId = req.params.id;
+      await storage.deleteApartment(apartmentId);
       res.json({ message: "Apartment deleted successfully" });
     } catch (error) {
       console.error("Error deleting apartment:", error);
@@ -143,20 +233,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment routes
   app.get('/api/pagos', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
+      const userType = req.session.userType;
+      const userId = req.session.userId;
+      
       let pagos;
-      if (currentUser.tipoUsuario === 'admin') {
-        // Admins can see all payments
+      if (userType === 'admin') {
         pagos = await storage.getPagos();
       } else {
-        // Tenants can only see their own payments
-        pagos = await storage.getPagosByUser(currentUser.id);
+        pagos = await storage.getPagosByUser(userId);
       }
-
+      
       res.json(pagos);
     } catch (error) {
       console.error("Error fetching pagos:", error);
@@ -164,14 +250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/pagos', isAuthenticated, async (req: any, res) => {
+  app.post('/api/pagos', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can create payments
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
       const pagoData = insertPagoSchema.parse(req.body);
       const pago = await storage.createPago(pagoData);
       res.json(pago);
@@ -181,20 +261,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/pagos/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/pagos/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Only admins can update payment status
-      if (currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
-      const pagoData = insertPagoSchema.partial().parse(req.body);
-      const pago = await storage.updatePago(req.params.id, pagoData);
+      const pagoId = req.params.id;
+      const pagoData = req.body;
+      const pago = await storage.updatePago(pagoId, pagoData);
       res.json(pago);
     } catch (error) {
       console.error("Error updating pago:", error);
@@ -202,15 +273,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/pagos/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/pagos/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Only admins can delete payments
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
-      await storage.deletePago(req.params.id);
+      const pagoId = req.params.id;
+      await storage.deletePago(pagoId);
       res.json({ message: "Pago deleted successfully" });
     } catch (error) {
       console.error("Error deleting pago:", error);
@@ -218,27 +284,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats for admin
-  app.get('/api/stats', isAuthenticated, async (req: any, res) => {
+  // Stats routes
+  app.get('/api/stats', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUserByEmail(req.user.claims.email);
-      if (!currentUser || currentUser.tipoUsuario !== 'admin') {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
-      const [apartments, users, pagos] = await Promise.all([
-        storage.getApartments(),
+      const [users, apartments, pagos] = await Promise.all([
         storage.getUsersWithApartments(),
-        storage.getPagos(),
+        storage.getApartments(),
+        storage.getPagos()
       ]);
+
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+
+      const pendingPayments = pagos.filter((p: any) => p.estado === 'pendiente').length;
+      const monthlyIncome = pagos
+        .filter((p: any) => {
+          const pagoDate = new Date(p.fechaPago || p.fechaVencimiento);
+          return pagoDate.getMonth() === currentMonth && 
+                 pagoDate.getFullYear() === currentYear &&
+                 p.estado === 'pagado';
+        })
+        .reduce((sum: number, p: any) => sum + parseFloat(p.monto), 0);
 
       const stats = {
         totalApartments: apartments.length,
-        activeUsers: users.filter(u => u.tipoUsuario === 'inquilino').length,
-        pendingPayments: pagos.filter(p => p.estado === 'pendiente').length,
-        monthlyIncome: pagos
-          .filter(p => p.estado === 'pagado' && p.fechaPago)
-          .reduce((sum, p) => sum + parseFloat(p.monto), 0),
+        activeUsers: users.filter((u: any) => u.tipoUsuario === 'inquilino').length,
+        pendingPayments,
+        monthlyIncome
       };
 
       res.json(stats);
