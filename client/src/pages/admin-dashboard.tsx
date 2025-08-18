@@ -73,7 +73,12 @@ export default function AdminDashboard() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const [showApartmentDialog, setShowApartmentDialog] = useState(false);
   const [showAssignUserDialog, setShowAssignUserDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
+  const [showEditApartmentDialog, setShowEditApartmentDialog] = useState(false);
   const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithApartment | null>(null);
+  const [editingUser, setEditingUser] = useState<UserWithApartment | null>(null);
+  const [editingApartment, setEditingApartment] = useState<Apartment | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     apartment: "all",
@@ -112,6 +117,31 @@ export default function AdminDashboard() {
     defaultValues: {
       idUsuario: ""
     },
+  });
+
+  const editUserForm = useForm<Omit<RegisterFormData, 'password'>>({
+    resolver: zodResolver(registerSchema.omit({ password: true })),
+    defaultValues: {
+      primerNombre: "",
+      segundoNombre: "",
+      primerApellido: "",
+      segundoApellido: "",
+      telefono: "",
+      correo: "",
+      identificacion: "",
+      tipoIdentificacion: "cedula",
+      tipoUsuario: "inquilino"
+    }
+  });
+
+  const editApartmentForm = useForm<ApartmentFormData>({
+    resolver: zodResolver(apartmentSchema),
+    defaultValues: {
+      numero: "",
+      piso: 1,
+      alicuota: "",
+      idUsuario: undefined
+    }
   });
 
   // Redirect if not authenticated or not admin
@@ -271,6 +301,62 @@ export default function AdminDashboard() {
     },
   });
 
+  // Edit user mutation
+  const editUserMutation = useMutation({
+    mutationFn: async (data: Omit<RegisterFormData, 'password'>) => {
+      if (!editingUser) throw new Error("No user selected for editing");
+      await apiRequest("PUT", `/api/users/${editingUser.id}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Usuario actualizado",
+        description: "Los datos del usuario han sido actualizados exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowEditUserDialog(false);
+      setEditingUser(null);
+      editUserForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar usuario",
+        description: error.message || "No se pudieron actualizar los datos del usuario",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit apartment mutation
+  const editApartmentMutation = useMutation({
+    mutationFn: async (data: ApartmentFormData) => {
+      if (!editingApartment) throw new Error("No apartment selected for editing");
+      await apiRequest("PUT", `/api/apartments/${editingApartment.id}`, {
+        ...data,
+        piso: Number(data.piso),
+        alicuota: data.alicuota
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Apartamento actualizado",
+        description: "Los datos del apartamento han sido actualizados exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowEditApartmentDialog(false);
+      setEditingApartment(null);
+      editApartmentForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar apartamento",
+        description: error.message || "No se pudieron actualizar los datos del apartamento",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout', {});
@@ -303,6 +389,41 @@ export default function AdminDashboard() {
     setSelectedApartment(apartment);
     setShowAssignUserDialog(true);
     assignUserForm.reset();
+  };
+
+  const handleEditUser = (user: UserWithApartment) => {
+    setEditingUser(user);
+    editUserForm.reset({
+      primerNombre: user.primerNombre,
+      segundoNombre: user.segundoNombre || "",
+      primerApellido: user.primerApellido,
+      segundoApellido: user.segundoApellido || "",
+      telefono: user.telefono,
+      correo: user.correo,
+      identificacion: user.identificacion,
+      tipoIdentificacion: user.tipoIdentificacion,
+      tipoUsuario: user.tipoUsuario
+    });
+    setShowEditUserDialog(true);
+  };
+
+  const handleEditApartment = (apartment: Apartment) => {
+    setEditingApartment(apartment);
+    editApartmentForm.reset({
+      numero: apartment.numero,
+      piso: apartment.piso,
+      alicuota: apartment.alicuota,
+      idUsuario: apartment.idUsuario || ""
+    });
+    setShowEditApartmentDialog(true);
+  };
+
+  const onEditUser = async (data: Omit<RegisterFormData, 'password'>) => {
+    editUserMutation.mutate(data);
+  };
+
+  const onEditApartment = async (data: ApartmentFormData) => {
+    editApartmentMutation.mutate(data);
   };
 
   const getStatusBadge = (estado: string) => {
@@ -1009,7 +1130,11 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleEditUser(userItem)}
+                              >
                                 <Edit className="w-4 h-4" />
                               </Button>
                               <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
@@ -1195,7 +1320,11 @@ export default function AdminDashboard() {
                                 >
                                   <UserPlus className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="outline">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleEditApartment(apartment)}
+                                >
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
@@ -1274,14 +1403,280 @@ export default function AdminDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del usuario
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editUserForm}>
+            <form onSubmit={editUserForm.handleSubmit(onEditUser)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editUserForm.control}
+                  name="primerNombre"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primer nombre</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Primer nombre" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editUserForm.control}
+                  name="segundoNombre"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Segundo nombre</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Segundo nombre" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editUserForm.control}
+                  name="primerApellido"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primer apellido</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Primer apellido" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editUserForm.control}
+                  name="segundoApellido"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Segundo apellido</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Segundo apellido" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editUserForm.control}
+                name="correo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="correo@ejemplo.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editUserForm.control}
+                name="telefono"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teléfono</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Número de teléfono" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editUserForm.control}
+                  name="identificacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Identificación</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Número de identificación" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editUserForm.control}
+                  name="tipoIdentificacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de identificación</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cedula">Cédula</SelectItem>
+                          <SelectItem value="pasaporte">Pasaporte</SelectItem>
+                          <SelectItem value="rif">RIF</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editUserForm.control}
+                name="tipoUsuario"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de usuario</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="inquilino">Inquilino</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={editUserMutation.isPending}
+                >
+                  {editUserMutation.isPending ? "Actualizando..." : "Actualizar Usuario"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowEditUserDialog(false);
+                    setEditingUser(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Apartment Dialog */}
+      <Dialog open={showEditApartmentDialog} onOpenChange={setShowEditApartmentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Apartamento</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del apartamento
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editApartmentForm}>
+            <form onSubmit={editApartmentForm.handleSubmit(onEditApartment)} className="space-y-4">
+              <FormField
+                control={editApartmentForm.control}
+                name="numero"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de apartamento</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: 101-A" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editApartmentForm.control}
+                name="piso"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Piso</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="Número de piso" 
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        value={field.value}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editApartmentForm.control}
+                name="alicuota"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alícuota mensual</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: 150000" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={editApartmentMutation.isPending}
+                >
+                  {editApartmentMutation.isPending ? "Actualizando..." : "Actualizar Apartamento"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowEditApartmentDialog(false);
+                    setEditingApartment(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
           createApartmentMutation.isPending ? "Creando apartamento..." :
-          assignUserMutation.isPending ? "Asignando usuario..." : "Procesando..."
+          assignUserMutation.isPending ? "Asignando usuario..." :
+          editUserMutation.isPending ? "Actualizando usuario..." :
+          editApartmentMutation.isPending ? "Actualizando apartamento..." : "Procesando..."
         } 
       />
     </div>
