@@ -1147,7 +1147,7 @@ export default function AdminDashboard() {
                       </tr>
                     ) : (
                       apartments.map((apartment) => {
-                        const assignedUser = users?.find(u => u.idApartamento === apartment.id);
+                        const assignedUser = users?.find(u => u.id === apartment.idUsuario);
                         return (
                           <tr key={apartment.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                             <td className="py-4 px-4">
