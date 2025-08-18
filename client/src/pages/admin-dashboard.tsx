@@ -411,7 +411,7 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                     <div className="bg-accent bg-opacity-10 p-3 rounded-lg">
-                      <TrendingUp className="text-accent w-6 h-6" />
+                      <CreditCard className="text-accent w-6 h-6" />
                     </div>
                   </div>
                 </CardContent>
