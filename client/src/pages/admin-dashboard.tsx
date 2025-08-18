@@ -1118,15 +1118,13 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <Badge 
-                              className={
-                                userItem.tipoUsuario === 'admin' 
-                                  ? "bg-primary bg-opacity-10 text-primary" 
-                                  : "bg-secondary bg-opacity-10 text-secondary"
-                              }
-                            >
-                              {userItem.tipoUsuario === 'admin' ? 'Administrador' : 'Inquilino'}
-                            </Badge>
+                            <span className={
+                              userItem.tipoUsuario === 'admin' 
+                                ? "font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm" 
+                                : "font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md text-sm"
+                            }>
+                              {userItem.tipoUsuario === 'admin' ? 'Admin' : 'Inquilino'}
+                            </span>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
