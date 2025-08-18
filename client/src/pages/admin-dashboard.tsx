@@ -60,8 +60,8 @@ export default function AdminDashboard() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
-    apartment: "",
-    status: "",
+    apartment: "all",
+    status: "all",
     month: ""
   });
 
@@ -225,10 +225,10 @@ export default function AdminDashboard() {
         !pago.user.primerApellido.toLowerCase().includes(filters.search.toLowerCase())) {
       return false;
     }
-    if (filters.apartment && pago.apartment.numero !== filters.apartment) {
+    if (filters.apartment && filters.apartment !== "all" && pago.apartment.numero !== filters.apartment) {
       return false;
     }
-    if (filters.status && pago.estado !== filters.status) {
+    if (filters.status && filters.status !== "all" && pago.estado !== filters.status) {
       return false;
     }
     return true;
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
                     <SelectValue placeholder="Todos los apartamentos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los apartamentos</SelectItem>
+                    <SelectItem value="all">Todos los apartamentos</SelectItem>
                     {apartments?.map(apt => (
                       <SelectItem key={apt.id} value={apt.numero}>
                         Apt. {apt.numero}
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
                     <SelectValue placeholder="Estado del pago" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los estados</SelectItem>
+                    <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="pagado">Pagado</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
                     <SelectItem value="vencido">Vencido</SelectItem>
