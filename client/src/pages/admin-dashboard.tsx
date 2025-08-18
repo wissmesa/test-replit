@@ -50,7 +50,20 @@ const registerSchema = z.object({
   tipoUsuario: z.enum(["admin", "inquilino"]),
 });
 
+const apartmentSchema = z.object({
+  numero: z.string().min(1, "Número de apartamento requerido"),
+  piso: z.number().min(1, "Piso debe ser mayor a 0"),
+  alicuota: z.string().min(1, "Alícuota requerida"),
+  idUsuario: z.string().optional()
+});
+
+const assignUserSchema = z.object({
+  idUsuario: z.string().min(1, "Debe seleccionar un usuario")
+});
+
 type RegisterFormData = z.infer<typeof registerSchema>;
+type ApartmentFormData = z.infer<typeof apartmentSchema>;
+type AssignUserFormData = z.infer<typeof assignUserSchema>;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -58,6 +71,9 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [activeNav, setActiveNav] = useState("dashboard");
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
+  const [showApartmentDialog, setShowApartmentDialog] = useState(false);
+  const [showAssignUserDialog, setShowAssignUserDialog] = useState(false);
+  const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     apartment: "all",
@@ -78,6 +94,23 @@ export default function AdminDashboard() {
       identificacion: "",
       tipoIdentificacion: "cedula",
       tipoUsuario: "inquilino",
+    },
+  });
+
+  const apartmentForm = useForm<ApartmentFormData>({
+    resolver: zodResolver(apartmentSchema),
+    defaultValues: {
+      numero: "",
+      piso: 1,
+      alicuota: "",
+      idUsuario: undefined
+    },
+  });
+
+  const assignUserForm = useForm<AssignUserFormData>({
+    resolver: zodResolver(assignUserSchema),
+    defaultValues: {
+      idUsuario: ""
     },
   });
 
@@ -181,6 +214,62 @@ export default function AdminDashboard() {
     },
   });
 
+  // Create apartment mutation
+  const createApartmentMutation = useMutation({
+    mutationFn: async (data: ApartmentFormData) => {
+      const response = await apiRequest("POST", "/api/apartments", {
+        ...data,
+        piso: Number(data.piso),
+        alicuota: data.alicuota
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Apartamento creado",
+        description: "El apartamento ha sido registrado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowApartmentDialog(false);
+      apartmentForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al crear apartamento",
+        description: error.message || "No se pudo crear el apartamento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Assign user to apartment mutation
+  const assignUserMutation = useMutation({
+    mutationFn: async ({ apartmentId, userId }: { apartmentId: number; userId: string }) => {
+      await apiRequest("PUT", `/api/apartments/${apartmentId}`, {
+        idUsuario: userId
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Usuario asignado",
+        description: "El usuario ha sido asignado al apartamento exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setShowAssignUserDialog(false);
+      setSelectedApartment(null);
+      assignUserForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al asignar usuario",
+        description: error.message || "No se pudo asignar el usuario",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout', {});
@@ -194,6 +283,25 @@ export default function AdminDashboard() {
 
   const onRegister = async (data: RegisterFormData) => {
     registerMutation.mutate(data);
+  };
+
+  const onCreateApartment = async (data: ApartmentFormData) => {
+    createApartmentMutation.mutate(data);
+  };
+
+  const onAssignUser = async (data: AssignUserFormData) => {
+    if (selectedApartment) {
+      assignUserMutation.mutate({
+        apartmentId: selectedApartment.id,
+        userId: data.idUsuario
+      });
+    }
+  };
+
+  const handleAssignUser = (apartment: Apartment) => {
+    setSelectedApartment(apartment);
+    setShowAssignUserDialog(true);
+    assignUserForm.reset();
   };
 
   const getStatusBadge = (estado: string) => {
@@ -917,11 +1025,263 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Apartments Management Section */}
+        {activeNav === "apartments" && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-xl font-bold text-gray-800">
+                  Gestión de Apartamentos
+                </CardTitle>
+                <Dialog open={showApartmentDialog} onOpenChange={setShowApartmentDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nuevo Apartamento
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Crear Apartamento</DialogTitle>
+                      <DialogDescription>
+                        Registra un nuevo apartamento en el sistema
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...apartmentForm}>
+                      <form onSubmit={apartmentForm.handleSubmit(onCreateApartment)} className="space-y-4">
+                        <FormField
+                          control={apartmentForm.control}
+                          name="numero"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Número del Apartamento</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej: 101, A-1, etc." {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={apartmentForm.control}
+                          name="piso"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Piso</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  {...field} 
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={apartmentForm.control}
+                          name="alicuota"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Alícuota (USD)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  step="0.01" 
+                                  placeholder="0.00" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex space-x-3 pt-4">
+                          <Button 
+                            type="submit" 
+                            className="flex-1" 
+                            disabled={createApartmentMutation.isPending}
+                          >
+                            {createApartmentMutation.isPending ? "Creando..." : "Crear Apartamento"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowApartmentDialog(false)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Piso</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Alícuota</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Inquilino Asignado</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!apartments || apartments.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8 text-gray-500">
+                          No hay apartamentos registrados
+                        </td>
+                      </tr>
+                    ) : (
+                      apartments.map((apartment) => {
+                        const assignedUser = users?.find(u => u.idApartamento === apartment.id);
+                        return (
+                          <tr key={apartment.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="py-4 px-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="bg-primary bg-opacity-10 p-2 rounded-lg">
+                                  <Home className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-800">Apt. {apartment.numero}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="text-gray-800">Piso {apartment.piso}</span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="font-medium text-gray-800">
+                                {formatCurrency(apartment.alicuota)}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">
+                              {assignedUser ? (
+                                <div className="flex items-center space-x-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarFallback className="bg-secondary text-white text-xs">
+                                      {getInitials(assignedUser.primerNombre, assignedUser.primerApellido)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-gray-800 text-sm">
+                                    {assignedUser.primerNombre} {assignedUser.primerApellido}
+                                  </span>
+                                </div>
+                              ) : (
+                                <Badge variant="outline" className="text-gray-500">
+                                  Sin asignar
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleAssignUser(apartment)}
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Assign User Dialog */}
+      <Dialog open={showAssignUserDialog} onOpenChange={setShowAssignUserDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Asignar Usuario a Apartamento</DialogTitle>
+            <DialogDescription>
+              {selectedApartment && `Selecciona un usuario para asignar al apartamento ${selectedApartment.numero}`}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...assignUserForm}>
+            <form onSubmit={assignUserForm.handleSubmit(onAssignUser)} className="space-y-4">
+              <FormField
+                control={assignUserForm.control}
+                name="idUsuario"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seleccionar Usuario</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un usuario" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {users?.filter(u => u.tipoUsuario === 'inquilino' && !u.idApartamento).map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.primerNombre} {user.primerApellido} - {user.correo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={assignUserMutation.isPending}
+                >
+                  {assignUserMutation.isPending ? "Asignando..." : "Asignar Usuario"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAssignUserDialog(false);
+                    setSelectedApartment(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending} 
-        message={markAsPaidMutation.isPending ? "Actualizando pago..." : "Registrando usuario..."} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending} 
+        message={
+          markAsPaidMutation.isPending ? "Actualizando pago..." : 
+          registerMutation.isPending ? "Registrando usuario..." :
+          createApartmentMutation.isPending ? "Creando apartamento..." :
+          assignUserMutation.isPending ? "Asignando usuario..." : "Procesando..."
+        } 
       />
     </div>
   );
