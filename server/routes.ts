@@ -282,6 +282,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create pago
+  app.post('/api/pagos', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = insertPagoSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Datos inválidos", errors: result.error.issues });
+      }
+
+      const pago = await storage.createPago(result.data);
+      res.status(201).json(pago);
+    } catch (error) {
+      console.error("Error creating pago:", error);
+      res.status(500).json({ message: "No se pudo crear el pago" });
+    }
+  });
+
+  // Get upload URL for payment receipt
+  app.post('/api/pagos/upload-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Set ACL policy for uploaded payment receipt
+  app.put('/api/pagos/set-receipt-acl', isAuthenticated, async (req: any, res) => {
+    try {
+      const { receiptUrl } = req.body;
+      if (!receiptUrl) {
+        return res.status(400).json({ message: "receiptUrl is required" });
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        receiptUrl,
+        {
+          owner: userId,
+          visibility: "private", // Payment receipts are private
+        }
+      );
+
+      res.json({ objectPath });
+    } catch (error) {
+      console.error("Error setting receipt ACL:", error);
+      res.status(500).json({ message: "Failed to set receipt ACL" });
+    }
+  });
+
+  // Serve uploaded payment receipts
+  app.get('/objects/:objectPath(*)', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // Check if user can access this file (basic ownership check)
+      const userId = req.user?.id;
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+      });
+      
+      if (!canAccess) {
+        return res.sendStatus(403);
+      }
+      
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error: any) {
+      console.error("Error serving object:", error);
+      if (error.name === "ObjectNotFoundError") {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
   // Payment routes
   app.get('/api/pagos', isAuthenticated, async (req: any, res) => {
     try {

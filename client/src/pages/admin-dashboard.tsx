@@ -36,6 +36,7 @@ import {
   Trash2
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 const registerSchema = z.object({
   primerNombre: z.string().min(1, "Primer nombre requerido"),
@@ -61,9 +62,20 @@ const assignUserSchema = z.object({
   idUsuario: z.string().min(1, "Debe seleccionar un usuario")
 });
 
+const pagoSchema = z.object({
+  idUsuario: z.string().min(1, "Debe seleccionar un usuario"),
+  idApartamento: z.number().min(1, "Debe seleccionar un apartamento"),
+  monto: z.string().min(1, "Monto requerido"),
+  fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
+  concepto: z.string().min(1, "Concepto requerido"),
+  metodoPago: z.string().optional(),
+  comprobanteUrl: z.string().optional()
+});
+
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
 type AssignUserFormData = z.infer<typeof assignUserSchema>;
+type PagoFormData = z.infer<typeof pagoSchema>;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -85,6 +97,8 @@ export default function AdminDashboard() {
     status: "all",
     month: ""
   });
+  const [showPagoDialog, setShowPagoDialog] = useState(false);
+  const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -141,6 +155,19 @@ export default function AdminDashboard() {
       piso: 1,
       alicuota: "",
       idUsuario: undefined
+    }
+  });
+
+  const pagoForm = useForm<PagoFormData>({
+    resolver: zodResolver(pagoSchema),
+    defaultValues: {
+      idUsuario: "",
+      idApartamento: 0,
+      monto: "",
+      fechaVencimiento: "",
+      concepto: "",
+      metodoPago: "",
+      comprobanteUrl: ""
     }
   });
 
@@ -357,6 +384,36 @@ export default function AdminDashboard() {
     },
   });
 
+  // Create pago mutation
+  const createPagoMutation = useMutation({
+    mutationFn: async (data: PagoFormData) => {
+      const response = await apiRequest("POST", "/api/pagos", {
+        ...data,
+        idApartamento: Number(data.idApartamento),
+        monto: data.monto
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pago creado",
+        description: "El pago ha sido registrado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowPagoDialog(false);
+      setUploadedReceiptUrl("");
+      pagoForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al crear pago",
+        description: error.message || "No se pudo crear el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout', {});
@@ -424,6 +481,52 @@ export default function AdminDashboard() {
 
   const onEditApartment = async (data: ApartmentFormData) => {
     editApartmentMutation.mutate(data);
+  };
+
+  const onCreatePago = async (data: PagoFormData) => {
+    createPagoMutation.mutate({
+      ...data,
+      comprobanteUrl: uploadedReceiptUrl
+    });
+  };
+
+  // Upload handler for payment receipts
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/pagos/upload-url", {});
+    const result = await response.json();
+    return {
+      method: "PUT" as const,
+      url: result.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: any) => {
+    if (result.successful && result.successful[0]) {
+      const uploadUrl = result.successful[0].uploadURL;
+      
+      try {
+        // Set ACL policy for the uploaded file
+        const response = await apiRequest("PUT", "/api/pagos/set-receipt-acl", {
+          receiptUrl: uploadUrl
+        });
+        const aclResult = await response.json();
+        
+        setUploadedReceiptUrl(aclResult.objectPath);
+        toast({
+          title: "Comprobante subido",
+          description: "El archivo se ha subido correctamente",
+        });
+      } catch (error) {
+        console.error("Error setting ACL:", error);
+        // Still set the URL even if ACL fails
+        setUploadedReceiptUrl(uploadUrl);
+        toast({
+          title: "Comprobante subido",
+          description: "El archivo se ha subido, pero puede haber problemas de permisos",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const getStatusBadge = (estado: string) => {
@@ -679,10 +782,14 @@ export default function AdminDashboard() {
                     <Download className="w-4 h-4 mr-2" />
                     Exportar
                   </Button>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Pago
-                  </Button>
+                  <Dialog open={showPagoDialog} onOpenChange={setShowPagoDialog}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nuevo Pago
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
                 </div>
               </div>
             </CardHeader>
@@ -746,19 +853,20 @@ export default function AdminDashboard() {
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Monto</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Fecha Venc.</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Estado</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Comprobante</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pagosLoading ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8">
+                        <td colSpan={7} className="text-center py-8">
                           Cargando pagos...
                         </td>
                       </tr>
                     ) : filteredPagos.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-500">
+                        <td colSpan={7} className="text-center py-8 text-gray-500">
                           No hay pagos para mostrar
                         </td>
                       </tr>
@@ -796,6 +904,19 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             {getStatusBadge(pago.estado)}
+                          </td>
+                          <td className="py-4 px-4">
+                            {(pago as any).comprobanteUrl ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open((pago as any).comprobanteUrl, '_blank')}
+                              >
+                                Ver Comprobante
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400 text-sm">Sin comprobante</span>
+                            )}
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
@@ -1665,16 +1786,183 @@ export default function AdminDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Create Pago Dialog */}
+      <Dialog open={showPagoDialog} onOpenChange={setShowPagoDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Crear Pago</DialogTitle>
+            <DialogDescription>
+              Registra un nuevo pago con comprobante opcional
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...pagoForm}>
+            <form onSubmit={pagoForm.handleSubmit(onCreatePago)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={pagoForm.control}
+                  name="idUsuario"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Usuario</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona usuario" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {users?.filter(u => u.tipoUsuario === 'inquilino').map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.primerNombre} {user.primerApellido}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={pagoForm.control}
+                  name="idApartamento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Apartamento</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString() || ""}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona apartamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {apartments?.map(apt => (
+                            <SelectItem key={apt.id} value={apt.id.toString()}>
+                              Apt. {apt.numero}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={pagoForm.control}
+                  name="monto"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monto</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={pagoForm.control}
+                  name="fechaVencimiento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha de Vencimiento</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={pagoForm.control}
+                name="concepto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Concepto</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Mantenimiento de condominio" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={pagoForm.control}
+                name="metodoPago"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Método de Pago (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Transferencia bancaria" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* File Upload Section */}
+              <div className="space-y-2">
+                <FormLabel>Comprobante de Pago (Opcional)</FormLabel>
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={5 * 1024 * 1024} // 5MB
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleUploadComplete}
+                  buttonClassName="w-full"
+                >
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    {uploadedReceiptUrl ? "Cambiar Comprobante" : "Subir Comprobante"}
+                  </div>
+                </ObjectUploader>
+                {uploadedReceiptUrl && (
+                  <div className="text-sm text-green-600">
+                    ✓ Comprobante subido exitosamente
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={createPagoMutation.isPending}
+                >
+                  {createPagoMutation.isPending ? "Creando..." : "Crear Pago"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowPagoDialog(false);
+                    setUploadedReceiptUrl("");
+                    pagoForm.reset();
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
           createApartmentMutation.isPending ? "Creando apartamento..." :
           assignUserMutation.isPending ? "Asignando usuario..." :
           editUserMutation.isPending ? "Actualizando usuario..." :
-          editApartmentMutation.isPending ? "Actualizando apartamento..." : "Procesando..."
+          editApartmentMutation.isPending ? "Actualizando apartamento..." :
+          createPagoMutation.isPending ? "Creando pago..." : "Procesando..."
         } 
       />
     </div>
