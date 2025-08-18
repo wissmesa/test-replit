@@ -146,6 +146,22 @@ export class DatabaseStorage implements IStorage {
     await db.delete(apartments).where(eq(apartments.id, id));
   }
 
+  async assignUserToApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
+    // Start a transaction to ensure both updates happen together
+    const apartment = await this.updateApartment(apartmentId, { idUsuario: userId });
+    const user = await this.updateUser(userId, { idApartamento: apartmentId as any });
+    
+    return { apartment, user };
+  }
+
+  async unassignUserFromApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
+    // Remove the relationship from both sides
+    const apartment = await this.updateApartment(apartmentId, { idUsuario: null as any });
+    const user = await this.updateUser(userId, { idApartamento: null as any });
+    
+    return { apartment, user };
+  }
+
   // Payment operations
   async getPagos(): Promise<PagoWithRelations[]> {
     const results = await db

@@ -246,8 +246,8 @@ export default function AdminDashboard() {
   // Assign user to apartment mutation
   const assignUserMutation = useMutation({
     mutationFn: async ({ apartmentId, userId }: { apartmentId: number; userId: string }) => {
-      await apiRequest("PUT", `/api/apartments/${apartmentId}`, {
-        idUsuario: userId
+      await apiRequest("POST", `/api/apartments/${apartmentId}/assign-user`, {
+        userId: userId
       });
     },
     onSuccess: () => {
@@ -257,6 +257,7 @@ export default function AdminDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setShowAssignUserDialog(false);
       setSelectedApartment(null);
       assignUserForm.reset();

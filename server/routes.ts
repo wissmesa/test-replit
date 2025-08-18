@@ -240,6 +240,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign user to apartment
+  app.post('/api/apartments/:id/assign-user', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const apartmentId = parseInt(req.params.id);
+      if (isNaN(apartmentId)) {
+        return res.status(400).json({ message: "Invalid apartment ID" });
+      }
+      
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const result = await storage.assignUserToApartment(apartmentId, userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error assigning user to apartment:", error);
+      res.status(500).json({ message: "Failed to assign user to apartment" });
+    }
+  });
+
+  // Unassign user from apartment
+  app.post('/api/apartments/:id/unassign-user', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const apartmentId = parseInt(req.params.id);
+      if (isNaN(apartmentId)) {
+        return res.status(400).json({ message: "Invalid apartment ID" });
+      }
+      
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const result = await storage.unassignUserFromApartment(apartmentId, userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error unassigning user from apartment:", error);
+      res.status(500).json({ message: "Failed to unassign user from apartment" });
+    }
+  });
+
   // Payment routes
   app.get('/api/pagos', isAuthenticated, async (req: any, res) => {
     try {
