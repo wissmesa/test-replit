@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import type { UserWithApartment, Apartment, PagoWithRelations } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -9,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -25,20 +30,55 @@ import {
   ChevronRight,
   BarChart3,
   Home,
-  LogOut
+  LogOut,
+  UserPlus,
+  Edit,
+  Trash2
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
+
+const registerSchema = z.object({
+  primerNombre: z.string().min(1, "Primer nombre requerido"),
+  segundoNombre: z.string().optional(),
+  primerApellido: z.string().min(1, "Primer apellido requerido"),
+  segundoApellido: z.string().optional(),
+  telefono: z.string().min(1, "Teléfono requerido"),
+  correo: z.string().email("Email inválido"),
+  password: z.string().min(6, "Contraseña debe tener al menos 6 caracteres"),
+  identificacion: z.string().min(1, "Identificación requerida"),
+  tipoIdentificacion: z.enum(["pasaporte", "cedula", "rif"]),
+  tipoUsuario: z.enum(["admin", "inquilino"]),
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeNav, setActiveNav] = useState("dashboard");
+  const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
     apartment: "",
     status: "",
     month: ""
+  });
+
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      primerNombre: "",
+      segundoNombre: "",
+      primerApellido: "",
+      segundoApellido: "",
+      telefono: "",
+      correo: "",
+      password: "",
+      identificacion: "",
+      tipoIdentificacion: "cedula",
+      tipoUsuario: "inquilino",
+    },
   });
 
   // Redirect if not authenticated or not admin
@@ -71,6 +111,12 @@ export default function AdminDashboard() {
   // Fetch apartments
   const { data: apartments } = useQuery<Apartment[]>({
     queryKey: ["/api/apartments"],
+    enabled: !!user && user.tipoUsuario === 'admin',
+  });
+
+  // Fetch users
+  const { data: users, isLoading: usersLoading } = useQuery<UserWithApartment[]>({
+    queryKey: ["/api/users"],
     enabled: !!user && user.tipoUsuario === 'admin',
   });
 
@@ -110,8 +156,44 @@ export default function AdminDashboard() {
     },
   });
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  // Register user mutation
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegisterFormData) => {
+      const response = await apiRequest("POST", "/api/auth/register", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Usuario creado",
+        description: "El usuario ha sido registrado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowRegisterDialog(false);
+      registerForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al crear usuario",
+        description: error.message || "No se pudo crear la cuenta",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout', {});
+      queryClient.clear();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error during logout:", error);
+      window.location.href = "/";
+    }
+  };
+
+  const onRegister = async (data: RegisterFormData) => {
+    registerMutation.mutate(data);
   };
 
   const getStatusBadge = (estado: string) => {
@@ -529,11 +611,317 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Users Management Section */}
+        {activeNav === "users" && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-xl font-bold text-gray-800">
+                  Gestión de Usuarios
+                </CardTitle>
+                <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Nuevo Usuario
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
+                      <DialogDescription>
+                        Complete la información para crear una nueva cuenta de usuario.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <Form {...registerForm}>
+                      <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={registerForm.control}
+                            name="primerNombre"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Primer Nombre</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={registerForm.control}
+                            name="segundoNombre"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Segundo Nombre</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={registerForm.control}
+                            name="primerApellido"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Primer Apellido</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={registerForm.control}
+                            name="segundoApellido"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Segundo Apellido</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={registerForm.control}
+                          name="correo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="email" 
+                                  placeholder="usuario@ejemplo.com" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contraseña</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Mínimo 6 caracteres" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="telefono"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Teléfono</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={registerForm.control}
+                            name="tipoIdentificacion"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Tipo ID</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="cedula">Cédula</SelectItem>
+                                    <SelectItem value="pasaporte">Pasaporte</SelectItem>
+                                    <SelectItem value="rif">RIF</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={registerForm.control}
+                            name="identificacion"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Identificación</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={registerForm.control}
+                          name="tipoUsuario"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Usuario</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="inquilino">Inquilino</SelectItem>
+                                  <SelectItem value="admin">Administrador</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex space-x-3 pt-4">
+                          <Button 
+                            type="submit" 
+                            className="flex-1" 
+                            disabled={registerMutation.isPending}
+                          >
+                            {registerMutation.isPending ? "Registrando..." : "Registrar Usuario"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowRegisterDialog(false)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {/* Users Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Usuario</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Email</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Teléfono</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Identificación</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Tipo</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersLoading ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8">
+                          Cargando usuarios...
+                        </td>
+                      </tr>
+                    ) : !users || users.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-gray-500">
+                          No hay usuarios para mostrar
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((userItem) => (
+                        <tr key={userItem.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="w-8 h-8">
+                                <AvatarFallback className="bg-primary text-white text-sm">
+                                  {getInitials(userItem.primerNombre, userItem.primerApellido)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-gray-800">
+                                  {userItem.primerNombre} {userItem.segundoNombre} {userItem.primerApellido} {userItem.segundoApellido}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="text-gray-800">{userItem.correo}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="text-gray-800">{userItem.telefono}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div>
+                              <span className="text-gray-800">{userItem.identificacion}</span>
+                              <p className="text-sm text-gray-600 capitalize">{userItem.tipoIdentificacion}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge 
+                              className={
+                                userItem.tipoUsuario === 'admin' 
+                                  ? "bg-primary bg-opacity-10 text-primary" 
+                                  : "bg-secondary bg-opacity-10 text-secondary"
+                              }
+                            >
+                              {userItem.tipoUsuario === 'admin' ? 'Administrador' : 'Inquilino'}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex space-x-2">
+                              <Button size="sm" variant="outline">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending} 
-        message="Actualizando pago..." 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending} 
+        message={markAsPaidMutation.isPending ? "Actualizando pago..." : "Registrando usuario..."} 
       />
     </div>
   );
