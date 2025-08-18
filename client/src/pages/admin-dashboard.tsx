@@ -378,8 +378,8 @@ export default function AdminDashboard() {
                         {statsLoading ? "..." : stats?.totalApartments || 0}
                       </p>
                     </div>
-                    <div className="bg-primary bg-opacity-10 p-3 rounded-lg">
-                      <Home className="text-primary w-6 h-6" />
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <Home className="text-blue-600 w-6 h-6" />
                     </div>
                   </div>
                 </CardContent>
@@ -394,8 +394,8 @@ export default function AdminDashboard() {
                         {statsLoading ? "..." : stats?.activeUsers || 0}
                       </p>
                     </div>
-                    <div className="bg-secondary bg-opacity-10 p-3 rounded-lg">
-                      <Users className="text-secondary w-6 h-6" />
+                    <div className="bg-green-100 p-3 rounded-lg">
+                      <Users className="text-green-600 w-6 h-6" />
                     </div>
                   </div>
                 </CardContent>
@@ -406,12 +406,12 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Pagos Pendientes</p>
-                      <p className="text-2xl font-bold text-accent">
+                      <p className="text-2xl font-bold text-orange-600">
                         {statsLoading ? "..." : stats?.pendingPayments || 0}
                       </p>
                     </div>
-                    <div className="bg-accent bg-opacity-10 p-3 rounded-lg">
-                      <CreditCard className="text-accent w-6 h-6" />
+                    <div className="bg-orange-100 p-3 rounded-lg">
+                      <CreditCard className="text-orange-600 w-6 h-6" />
                     </div>
                   </div>
                 </CardContent>
@@ -422,12 +422,12 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Ingresos del Mes</p>
-                      <p className="text-2xl font-bold text-secondary">
+                      <p className="text-2xl font-bold text-green-600">
                         {statsLoading ? "..." : formatCurrency(stats?.monthlyIncome || 0)}
                       </p>
                     </div>
-                    <div className="bg-secondary bg-opacity-10 p-3 rounded-lg">
-                      <DollarSign className="text-secondary w-6 h-6" />
+                    <div className="bg-green-100 p-3 rounded-lg">
+                      <DollarSign className="text-green-600 w-6 h-6" />
                     </div>
                   </div>
                 </CardContent>
