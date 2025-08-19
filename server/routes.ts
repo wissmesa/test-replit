@@ -285,8 +285,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create pago
   app.post('/api/pagos', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
+      console.log("Creating pago with data:", req.body);
       const result = insertPagoSchema.safeParse(req.body);
       if (!result.success) {
+        console.log("Validation failed:", result.error.issues);
         return res.status(400).json({ message: "Datos inválidos", errors: result.error.issues });
       }
 
