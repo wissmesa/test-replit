@@ -121,6 +121,9 @@ export const insertPagoSchema = createInsertSchema(pagos).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  fechaVencimiento: z.string().transform((val) => new Date(val)),
+  fechaPago: z.string().optional().transform((val) => val ? new Date(val) : undefined),
 });
 
 // Types

@@ -487,7 +487,7 @@ export default function AdminDashboard() {
     createPagoMutation.mutate({
       ...data,
       monto: parseFloat(data.monto),
-      fechaVencimiento: new Date(data.fechaVencimiento).toISOString(),
+      fechaVencimiento: data.fechaVencimiento, // Send as string, schema will transform to Date
       comprobanteUrl: uploadedReceiptUrl
     });
   };
