@@ -486,7 +486,7 @@ export default function AdminDashboard() {
   const onCreatePago = async (data: PagoFormData) => {
     createPagoMutation.mutate({
       ...data,
-      monto: parseFloat(data.monto),
+      monto: data.monto, // Keep as string for decimal field
       fechaVencimiento: data.fechaVencimiento, // Send as string, schema will transform to Date
       comprobanteUrl: uploadedReceiptUrl
     });
