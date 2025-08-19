@@ -486,6 +486,7 @@ export default function AdminDashboard() {
   const onCreatePago = async (data: PagoFormData) => {
     createPagoMutation.mutate({
       ...data,
+      fechaVencimiento: new Date(data.fechaVencimiento),
       comprobanteUrl: uploadedReceiptUrl
     });
   };

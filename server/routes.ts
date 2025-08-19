@@ -319,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "receiptUrl is required" });
       }
 
-      const userId = req.user?.id;
+      const userId = req.session.userId;
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
@@ -349,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       
       // Check if user can access this file (basic ownership check)
-      const userId = req.user?.id;
+      const userId = req.session.userId;
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
         userId: userId,
