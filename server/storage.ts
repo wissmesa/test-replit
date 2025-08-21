@@ -64,7 +64,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...(user as any).users,
-      apartment: (user as any).apartments || undefined,
+      apartment: (user as any).apartment || undefined,
     };
   }
 
@@ -76,7 +76,7 @@ export class DatabaseStorage implements IStorage {
     
     return (results as any[]).map((result: any) => ({
       ...result.users,
-      apartment: result.apartments || undefined,
+      apartment: result.apartment || undefined,
     }));
   }
 
@@ -104,7 +104,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...(user as any).users,
-      apartment: (user as any).apartments || undefined,
+      apartment: (user as any).apartment || undefined,
     };
   }
 
@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartments,
+      apartment: result.apartment,
     }));
   }
 
@@ -259,7 +259,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartments,
+      apartment: result.apartment,
     }));
   }
 
@@ -276,7 +276,7 @@ export class DatabaseStorage implements IStorage {
     return {
       ...result.pagos,
       user: result.users,
-      apartment: result.apartments,
+      apartment: result.apartment,
     };
   }
 
@@ -342,7 +342,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(apartments.numero);
     
     return results.map((result: any) => ({
-      ...result.apartments,
+      ...result.apartment,
       user: result.users,
     }));
   }
@@ -359,7 +359,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartments,
+      apartment: result.apartment,
     }));
   }
 
