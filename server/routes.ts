@@ -229,6 +229,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk create apartments
+  app.post('/api/apartments/bulk', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { startFloor, endFloor, unitsPerFloor, alicuota } = req.body;
+      
+      if (!startFloor || !endFloor || !unitsPerFloor || !alicuota) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const apartments = [];
+      const units = ['A', 'B', 'C', 'D'].slice(0, unitsPerFloor);
+
+      for (let piso = startFloor; piso <= endFloor; piso++) {
+        for (const unit of units) {
+          const apartmentData = {
+            numero: `${piso.toString().padStart(2, '0')}-${unit}`,
+            piso: piso,
+            alicuota: alicuota.toString(),
+            idUsuario: null
+          };
+          
+          const apartment = await storage.createApartment(apartmentData);
+          apartments.push(apartment);
+        }
+      }
+
+      res.json({ 
+        message: `Se crearon ${apartments.length} apartamentos exitosamente`,
+        apartments: apartments
+      });
+    } catch (error) {
+      console.error("Error creating bulk apartments:", error);
+      res.status(500).json({ message: "Failed to create apartments in bulk" });
+    }
+  });
+
   app.put('/api/apartments/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const apartmentId = parseInt(req.params.id);
