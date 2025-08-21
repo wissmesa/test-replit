@@ -232,6 +232,19 @@ export class DatabaseStorage implements IStorage {
   async deletePago(id: string): Promise<void> {
     await db.delete(pagos).where(eq(pagos.id, id));
   }
+
+  async getApartmentsWithUsers(): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(apartments)
+      .leftJoin(users, eq(apartments.idUsuario, users.id))
+      .orderBy(apartments.numero);
+    
+    return results.map(result => ({
+      ...result.apartments,
+      user: result.users,
+    }));
+  }
 }
 
 export const storage = new DatabaseStorage();

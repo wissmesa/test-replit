@@ -300,6 +300,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate bulk payments based on total amount and apartment percentages
+  app.post('/api/pagos/generate-bulk', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { montoTotal, concepto, fechaVencimiento, metodoPago } = req.body;
+      
+      if (!montoTotal || !concepto || !fechaVencimiento) {
+        return res.status(400).json({ message: "Faltan datos requeridos: montoTotal, concepto, fechaVencimiento" });
+      }
+
+      // Get all apartments with their owners and aliquot percentages
+      const apartments = await storage.getApartmentsWithUsers();
+      
+      if (apartments.length === 0) {
+        return res.status(400).json({ message: "No hay apartamentos configurados" });
+      }
+
+      // Calculate payments for each apartment
+      const pagosToCreate = apartments
+        .filter((apt: any) => apt.user) // Only apartments with assigned users
+        .map((apt: any) => {
+          const aliquotaPercentage = parseFloat(apt.alicuota);
+          const montoIndividual = (parseFloat(montoTotal) * aliquotaPercentage / 100).toFixed(2);
+          
+          return {
+            idUsuario: apt.user.id,
+            idApartamento: apt.id,
+            monto: montoIndividual,
+            fechaVencimiento: new Date(fechaVencimiento).toISOString(),
+            concepto,
+            metodoPago: metodoPago || "sin_especificar",
+            estado: 'pendiente' as const
+          };
+        });
+
+      if (pagosToCreate.length === 0) {
+        return res.status(400).json({ message: "No hay apartamentos con propietarios asignados" });
+      }
+
+      // Create all payments
+      const createdPagos = await Promise.all(
+        pagosToCreate.map((pagoData: any) => storage.createPago(pagoData))
+      );
+
+      console.log(`Created ${createdPagos.length} bulk payments for total amount: ${montoTotal}`);
+      
+      res.status(201).json({ 
+        message: `Se generaron ${createdPagos.length} pagos exitosamente`,
+        pagos: createdPagos,
+        montoTotal,
+        montoPorApartamento: pagosToCreate.map((p: any) => ({ 
+          apartamento: apartments.find((a: any) => a.id === p.idApartamento)?.numero,
+          alicuota: apartments.find((a: any) => a.id === p.idApartamento)?.alicuota + "%",
+          monto: p.monto 
+        }))
+      });
+    } catch (error) {
+      console.error("Error creating bulk payments:", error);
+      res.status(500).json({ message: "No se pudieron generar los pagos en masa" });
+    }
+  });
+
   // Get upload URL for payment receipt
   app.post('/api/pagos/upload-url', isAuthenticated, async (req: any, res) => {
     try {

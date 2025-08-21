@@ -80,11 +80,19 @@ const editPagoSchema = z.object({
   estado: z.enum(["pendiente", "pagado", "vencido"]).optional()
 });
 
+const bulkPagoSchema = z.object({
+  montoTotal: z.string().min(1, "Monto total requerido"),
+  concepto: z.string().min(1, "Concepto requerido"),
+  fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
+  metodoPago: z.string().optional()
+});
+
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
 type AssignUserFormData = z.infer<typeof assignUserSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
 type EditPagoFormData = z.infer<typeof editPagoSchema>;
+type BulkPagoFormData = z.infer<typeof bulkPagoSchema>;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -108,6 +116,7 @@ export default function AdminDashboard() {
   });
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [showEditPagoDialog, setShowEditPagoDialog] = useState(false);
+  const [showBulkPagoDialog, setShowBulkPagoDialog] = useState(false);
   const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
 
@@ -190,6 +199,16 @@ export default function AdminDashboard() {
       concepto: "",
       metodoPago: "sin_especificar",
       estado: "pendiente"
+    }
+  });
+
+  const bulkPagoForm = useForm<BulkPagoFormData>({
+    resolver: zodResolver(bulkPagoSchema),
+    defaultValues: {
+      montoTotal: "",
+      concepto: "",
+      fechaVencimiento: "",
+      metodoPago: "sin_especificar"
     }
   });
 
@@ -297,6 +316,44 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkPagoMutation = useMutation({
+    mutationFn: async (data: BulkPagoFormData) => {
+      const response = await apiRequest('POST', '/api/pagos/generate-bulk', {
+        ...data,
+        fechaVencimiento: new Date(data.fechaVencimiento).toISOString()
+      });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowBulkPagoDialog(false);
+      bulkPagoForm.reset();
+      toast({
+        title: "Éxito",
+        description: result.message,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudieron generar los pagos en masa",
         variant: "destructive",
       });
     },
@@ -619,6 +676,10 @@ export default function AdminDashboard() {
     });
   };
 
+  const onBulkPagoSubmit = (data: BulkPagoFormData) => {
+    bulkPagoMutation.mutate(data);
+  };
+
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case 'pagado':
@@ -871,6 +932,13 @@ export default function AdminDashboard() {
                   <Button variant="outline">
                     <Download className="w-4 h-4 mr-2" />
                     Exportar
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowBulkPagoDialog(true)}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Generar en Masa
                   </Button>
                   <Dialog open={showPagoDialog} onOpenChange={setShowPagoDialog}>
                     <DialogTrigger asChild>
@@ -1427,12 +1495,12 @@ export default function AdminDashboard() {
                           name="alicuota"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Alícuota (USD)</FormLabel>
+                              <FormLabel>Porcentaje de Alícuota (%)</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
                                   step="0.01" 
-                                  placeholder="0.00" 
+                                  placeholder="Ej: 8.50" 
                                   {...field} 
                                 />
                               </FormControl>
@@ -1471,7 +1539,7 @@ export default function AdminDashboard() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Piso</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Alícuota</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Alícuota (%)</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario Asignado</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
                     </tr>
@@ -1502,8 +1570,8 @@ export default function AdminDashboard() {
                               <span className="text-gray-800">Piso {apartment.piso}</span>
                             </td>
                             <td className="py-4 px-4">
-                              <span className="font-medium text-gray-800">
-                                {formatCurrency(apartment.alicuota)}
+                              <span className="font-medium text-blue-600">
+                                {apartment.alicuota}%
                               </span>
                             </td>
                             <td className="py-4 px-4">
@@ -1848,9 +1916,9 @@ export default function AdminDashboard() {
                 name="alicuota"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Alícuota mensual</FormLabel>
+                    <FormLabel>Porcentaje de Alícuota (%)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: 150000" {...field} />
+                      <Input placeholder="Ej: 8.50" type="number" step="0.01" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2191,8 +2259,115 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
       
+      {/* Bulk Pago Dialog */}
+      <Dialog open={showBulkPagoDialog} onOpenChange={setShowBulkPagoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generar Pagos en Masa</DialogTitle>
+            <DialogDescription>
+              Crea pagos automáticamente para todos los apartamentos basado en alícuotas
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...bulkPagoForm}>
+            <form onSubmit={bulkPagoForm.handleSubmit(onBulkPagoSubmit)} className="space-y-4">
+              <FormField
+                control={bulkPagoForm.control}
+                name="concepto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Concepto</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Alícuota Febrero 2025" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPagoForm.control}
+                name="montoTotal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monto Total del Edificio (USD)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: 5000.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPagoForm.control}
+                name="fechaVencimiento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Vencimiento</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPagoForm.control}
+                name="metodoPago"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Método de Pago Sugerido (Opcional)</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar método" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
+                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="pago_movil">Pago Móvil</SelectItem>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="zelle">Zelle</SelectItem>
+                          <SelectItem value="paypal">PayPal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">
+                <strong>Nota:</strong> Los montos se calcularán automáticamente según el porcentaje de alícuota de cada apartamento.
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={bulkPagoMutation.isPending}
+                >
+                  {bulkPagoMutation.isPending ? "Generando..." : "Generar Pagos"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowBulkPagoDialog(false);
+                    bulkPagoForm.reset();
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
@@ -2201,7 +2376,8 @@ export default function AdminDashboard() {
           editUserMutation.isPending ? "Actualizando usuario..." :
           editApartmentMutation.isPending ? "Actualizando apartamento..." :
           createPagoMutation.isPending ? "Creando pago..." : 
-          editPagoMutation.isPending ? "Actualizando pago..." : "Procesando..."
+          editPagoMutation.isPending ? "Actualizando pago..." :
+          bulkPagoMutation.isPending ? "Generando pagos en masa..." : "Procesando..."
         } 
       />
     </div>
