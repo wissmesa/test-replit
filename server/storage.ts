@@ -186,9 +186,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async assignUserToApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
-    // Start a transaction to ensure both updates happen together
+    // Check if user is already assigned to another apartment
+    const existingUser = await this.getUser(userId);
+    if (existingUser && existingUser.idApartamento && existingUser.idApartamento !== apartmentId) {
+      // Unassign user from previous apartment first
+      await this.unassignUserFromApartment(existingUser.idApartamento, userId);
+    }
+    
+    // Check if apartment already has another user assigned
+    const existingApartment = await this.getApartment(apartmentId);
+    if (existingApartment && existingApartment.idUsuario && existingApartment.idUsuario !== userId) {
+      // Unassign previous user from apartment first
+      await this.unassignUserFromApartment(apartmentId, existingApartment.idUsuario);
+    }
+    
+    // Now assign the user to the apartment
     const apartment = await this.updateApartment(apartmentId, { idUsuario: userId });
     const user = await this.updateUser(userId, { idApartamento: apartmentId });
+    
+    // Update pending payments for this apartment to be assigned to the new user
+    await this.updatePendingPaymentsByApartment(apartmentId, userId);
     
     return { apartment, user };
   }

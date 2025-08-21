@@ -276,21 +276,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentApartment = await storage.getApartment(apartmentId);
       const apartmentData = req.body;
       
-      // Update apartment
-      const apartment = await storage.updateApartment(apartmentId, apartmentData);
-      
-      // Handle payment updates based on user assignment changes
+      // Handle user assignment changes first, then update apartment basic data
       if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined)) {
-        // User is being unassigned - remove user from pending payments
+        // User is being unassigned
+        await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
         await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
-      } else if (!currentApartment?.idUsuario && apartmentData.idUsuario) {
-        // User is being assigned - assign user to pending payments
-        await storage.updatePendingPaymentsByApartment(apartmentId, apartmentData.idUsuario);
-      } else if (currentApartment?.idUsuario && apartmentData.idUsuario && currentApartment.idUsuario !== apartmentData.idUsuario) {
-        // User is being changed - first unassign old user, then assign new user
-        await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
-        await storage.updatePendingPaymentsByApartment(apartmentId, apartmentData.idUsuario);
+      } else if (apartmentData.idUsuario && (!currentApartment?.idUsuario || currentApartment.idUsuario !== apartmentData.idUsuario)) {
+        // User is being assigned or changed - this handles uniqueness validation
+        await storage.assignUserToApartment(apartmentId, apartmentData.idUsuario);
       }
+      
+      // Update apartment basic data (excluding user assignment as it's handled above)
+      const { idUsuario, ...basicApartmentData } = apartmentData;
+      const apartment = await storage.updateApartment(apartmentId, basicApartmentData);
       
       res.json(apartment);
     } catch (error) {
