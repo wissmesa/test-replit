@@ -60,9 +60,6 @@ const apartmentSchema = z.object({
   idUsuario: z.string().optional()
 });
 
-const assignUserSchema = z.object({
-  idUsuario: z.string().min(1, "Debe seleccionar un usuario")
-});
 
 const pagoSchema = z.object({
   idUsuario: z.string().min(1, "Debe seleccionar un usuario"),
@@ -93,7 +90,6 @@ const bulkPagoSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
-type AssignUserFormData = z.infer<typeof assignUserSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
 type EditPagoFormData = z.infer<typeof editPagoSchema>;
 type BulkPagoFormData = z.infer<typeof bulkPagoSchema>;
@@ -106,10 +102,8 @@ export default function AdminDashboard() {
   const [activeNav, setActiveNav] = useState("dashboard");
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const [showApartmentDialog, setShowApartmentDialog] = useState(false);
-  const [showAssignUserDialog, setShowAssignUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showEditApartmentDialog, setShowEditApartmentDialog] = useState(false);
-  const [selectedApartment, setSelectedApartment] = useState<ApartmentWithUser | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserWithApartment | null>(null);
   const [editingUser, setEditingUser] = useState<UserWithApartment | null>(null);
   const [editingApartment, setEditingApartment] = useState<ApartmentWithUser | null>(null);
@@ -170,12 +164,6 @@ export default function AdminDashboard() {
     },
   });
 
-  const assignUserForm = useForm<AssignUserFormData>({
-    resolver: zodResolver(assignUserSchema),
-    defaultValues: {
-      idUsuario: ""
-    },
-  });
 
   const editUserForm = useForm<Omit<RegisterFormData, 'password'>>({
     resolver: zodResolver(registerSchema.omit({ password: true })),
@@ -520,33 +508,6 @@ export default function AdminDashboard() {
     },
   });
 
-  // Assign user to apartment mutation
-  const assignUserMutation = useMutation({
-    mutationFn: async ({ apartmentId, userId }: { apartmentId: number; userId: string }) => {
-      await apiRequest("POST", `/api/apartments/${apartmentId}/assign-user`, {
-        userId: userId
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Usuario asignado",
-        description: "El usuario ha sido asignado al apartamento exitosamente",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setShowAssignUserDialog(false);
-      setSelectedApartment(null);
-      assignUserForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al asignar usuario",
-        description: error.message || "No se pudo asignar el usuario",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Edit user mutation
   const editUserMutation = useMutation({
@@ -701,20 +662,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const onAssignUser = async (data: AssignUserFormData) => {
-    if (selectedApartment) {
-      assignUserMutation.mutate({
-        apartmentId: selectedApartment.id,
-        userId: data.idUsuario
-      });
-    }
-  };
 
-  const handleAssignUser = (apartment: ApartmentWithUser) => {
-    setSelectedApartment(apartment);
-    setShowAssignUserDialog(true);
-    assignUserForm.reset();
-  };
 
   const handleEditUser = (user: UserWithApartment) => {
     setEditingUser(user);
@@ -1942,13 +1890,6 @@ export default function AdminDashboard() {
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => handleAssignUser(apartment)}
-                                >
-                                  <UserPlus className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
                                   onClick={() => handleEditApartment(apartment)}
                                 >
                                   <Edit className="w-4 h-4" />
@@ -2042,65 +1983,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Assign User Dialog */}
-      <Dialog open={showAssignUserDialog} onOpenChange={setShowAssignUserDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Asignar Usuario a Apartamento</DialogTitle>
-            <DialogDescription>
-              {selectedApartment && `Selecciona un usuario para asignar al apartamento ${selectedApartment.numero}`}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...assignUserForm}>
-            <form onSubmit={assignUserForm.handleSubmit(onAssignUser)} className="space-y-4">
-              <FormField
-                control={assignUserForm.control}
-                name="idUsuario"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seleccionar Usuario</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un usuario" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.primerNombre} {user.primerApellido} - {user.correo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
-                  disabled={assignUserMutation.isPending}
-                >
-                  {assignUserMutation.isPending ? "Asignando..." : "Asignar Usuario"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowAssignUserDialog(false);
-                    setSelectedApartment(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
@@ -2910,12 +2792,11 @@ export default function AdminDashboard() {
       </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending || deletePagoMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending || deletePagoMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
           createApartmentMutation.isPending ? "Creando apartamento..." :
-          assignUserMutation.isPending ? "Asignando usuario..." :
           editUserMutation.isPending ? "Actualizando usuario..." :
           editApartmentMutation.isPending ? "Actualizando apartamento..." :
           createPagoMutation.isPending ? "Creando pago..." : 
