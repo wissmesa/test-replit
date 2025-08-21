@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       monto: "",
       fechaVencimiento: "",
       concepto: "",
-      metodoPago: "",
+      metodoPago: "sin_especificar",
       comprobanteUrl: ""
     }
   });
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
       monto: "",
       fechaVencimiento: "",
       concepto: "",
-      metodoPago: "",
+      metodoPago: "sin_especificar",
       estado: "pendiente"
     }
   });
@@ -593,7 +593,7 @@ export default function AdminDashboard() {
       monto: pago.monto,
       fechaVencimiento: new Date(pago.fechaVencimiento).toISOString().split('T')[0],
       concepto: pago.concepto,
-      metodoPago: pago.metodoPago || "",
+      metodoPago: pago.metodoPago || "sin_especificar",
       estado: pago.estado as "pendiente" | "pagado" | "vencido"
     });
     setShowEditPagoDialog(true);
@@ -1998,7 +1998,7 @@ export default function AdminDashboard() {
                           <SelectValue placeholder="Seleccionar método de pago" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sin especificar</SelectItem>
+                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
                           <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                           <SelectItem value="efectivo">Efectivo</SelectItem>
@@ -2127,7 +2127,7 @@ export default function AdminDashboard() {
                           <SelectValue placeholder="Seleccionar método" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sin especificar</SelectItem>
+                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
                           <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                           <SelectItem value="efectivo">Efectivo</SelectItem>
