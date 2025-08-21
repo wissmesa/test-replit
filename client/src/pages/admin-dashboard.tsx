@@ -109,10 +109,10 @@ export default function AdminDashboard() {
   const [showAssignUserDialog, setShowAssignUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showEditApartmentDialog, setShowEditApartmentDialog] = useState(false);
-  const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(null);
+  const [selectedApartment, setSelectedApartment] = useState<ApartmentWithUser | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserWithApartment | null>(null);
   const [editingUser, setEditingUser] = useState<UserWithApartment | null>(null);
-  const [editingApartment, setEditingApartment] = useState<Apartment | null>(null);
+  const [editingApartment, setEditingApartment] = useState<ApartmentWithUser | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     apartment: "all",
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
   const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
   const [showHistorialDialog, setShowHistorialDialog] = useState(false);
-  const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<Apartment | null>(null);
+  const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<ApartmentWithUser | null>(null);
   const [apartmentHistory, setApartmentHistory] = useState<PagoWithRelations[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   
@@ -710,7 +710,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAssignUser = (apartment: Apartment) => {
+  const handleAssignUser = (apartment: ApartmentWithUser) => {
     setSelectedApartment(apartment);
     setShowAssignUserDialog(true);
     assignUserForm.reset();
@@ -738,7 +738,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleEditApartment = (apartment: Apartment) => {
+  const handleEditApartment = (apartment: ApartmentWithUser) => {
     setEditingApartment(apartment);
     editApartmentForm.reset({
       numero: apartment.numero,
@@ -828,7 +828,7 @@ export default function AdminDashboard() {
     window.open(documentUrl, '_blank');
   };
 
-  const handleViewApartmentHistory = async (apartment: Apartment) => {
+  const handleViewApartmentHistory = async (apartment: ApartmentWithUser) => {
     setSelectedApartmentForHistory(apartment);
     setShowHistorialDialog(true);
     setHistoryLoading(true);

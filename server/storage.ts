@@ -348,7 +348,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(apartments.numero);
     
     return results.map((result: any) => ({
-      ...result.apartment,
+      ...result.apartments,
       user: result.users,
     }));
   }
