@@ -149,15 +149,15 @@ export class DatabaseStorage implements IStorage {
   async assignUserToApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
     // Start a transaction to ensure both updates happen together
     const apartment = await this.updateApartment(apartmentId, { idUsuario: userId });
-    const user = await this.updateUser(userId, { idApartamento: apartmentId as any });
+    const user = await this.updateUser(userId, { idApartamento: apartmentId });
     
     return { apartment, user };
   }
 
   async unassignUserFromApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
     // Remove the relationship from both sides
-    const apartment = await this.updateApartment(apartmentId, { idUsuario: null as any });
-    const user = await this.updateUser(userId, { idApartamento: null as any });
+    const apartment = await this.updateApartment(apartmentId, { idUsuario: null });
+    const user = await this.updateUser(userId, { idApartamento: null });
     
     return { apartment, user };
   }
@@ -240,7 +240,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(apartments.idUsuario, users.id))
       .orderBy(apartments.numero);
     
-    return results.map(result => ({
+    return results.map((result: any) => ({
       ...result.apartments,
       user: result.users,
     }));

@@ -123,6 +123,8 @@ export default function AdminDashboard() {
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
   const [showHistorialDialog, setShowHistorialDialog] = useState(false);
   const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<Apartment | null>(null);
+  const [apartmentHistory, setApartmentHistory] = useState<PagoWithRelations[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -146,7 +148,7 @@ export default function AdminDashboard() {
       numero: "",
       piso: 1,
       alicuota: "",
-      idUsuario: undefined
+      idUsuario: "sin_asignar"
     },
   });
 
@@ -178,7 +180,7 @@ export default function AdminDashboard() {
       numero: "",
       piso: 1,
       alicuota: "",
-      idUsuario: undefined
+      idUsuario: "sin_asignar"
     }
   });
 
@@ -255,11 +257,7 @@ export default function AdminDashboard() {
     enabled: !!user && user.tipoUsuario === 'admin',
   });
 
-  // Query for apartment payment history
-  const { data: apartmentHistory, isLoading: historyLoading } = useQuery<PagoWithRelations[]>({
-    queryKey: ["/api/pagos/apartment", selectedApartmentForHistory?.id],
-    enabled: !!selectedApartmentForHistory && !!user,
-  });
+
 
   // Mark payment as paid mutation
   const markAsPaidMutation = useMutation({
@@ -585,7 +583,10 @@ export default function AdminDashboard() {
   };
 
   const onCreateApartment = async (data: ApartmentFormData) => {
-    createApartmentMutation.mutate(data);
+    createApartmentMutation.mutate({
+      ...data,
+      idUsuario: data.idUsuario === "sin_asignar" ? undefined : data.idUsuario,
+    });
   };
 
   const onAssignUser = async (data: AssignUserFormData) => {
@@ -625,7 +626,7 @@ export default function AdminDashboard() {
       numero: apartment.numero,
       piso: apartment.piso,
       alicuota: apartment.alicuota,
-      idUsuario: apartment.idUsuario || ""
+      idUsuario: apartment.idUsuario || "sin_asignar"
     });
     setShowEditApartmentDialog(true);
   };
@@ -635,7 +636,10 @@ export default function AdminDashboard() {
   };
 
   const onEditApartment = async (data: ApartmentFormData) => {
-    editApartmentMutation.mutate(data);
+    editApartmentMutation.mutate({
+      ...data,
+      idUsuario: data.idUsuario === "sin_asignar" ? undefined : data.idUsuario,
+    });
   };
 
   const onCreatePago = async (data: PagoFormData) => {
@@ -706,6 +710,28 @@ export default function AdminDashboard() {
     window.open(documentUrl, '_blank');
   };
 
+  const handleViewApartmentHistory = async (apartment: Apartment) => {
+    setSelectedApartmentForHistory(apartment);
+    setShowHistorialDialog(true);
+    setHistoryLoading(true);
+    setApartmentHistory(null);
+    
+    try {
+      const response = await apiRequest("GET", `/api/pagos/apartment/${apartment.id}`, {});
+      const historyData = await response.json();
+      setApartmentHistory(historyData);
+    } catch (error) {
+      console.error("Error loading apartment history:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial del apartamento",
+        variant: "destructive"
+      });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const onEditPagoSubmit = (data: EditPagoFormData) => {
     if (!editingPago) return;
     
@@ -728,10 +754,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleViewApartmentHistory = (apartment: Apartment) => {
-    setSelectedApartmentForHistory(apartment);
-    setShowHistorialDialog(true);
-  };
+
 
   const getStatusBadge = (estado: string) => {
     switch (estado) {
@@ -1571,6 +1594,32 @@ export default function AdminDashboard() {
                           )}
                         />
 
+                        <FormField
+                          control={apartmentForm.control}
+                          name="idUsuario"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Usuario Asignado (Opcional)</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sin asignar" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="sin_asignar">Sin asignar</SelectItem>
+                                  {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                      {user.primerNombre} {user.primerApellido}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
                         <div className="flex space-x-3 pt-4">
                           <Button 
                             type="submit" 
@@ -1991,6 +2040,32 @@ export default function AdminDashboard() {
                     <FormControl>
                       <Input placeholder="Ej: 8.50" type="number" step="0.01" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editApartmentForm.control}
+                name="idUsuario"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usuario Asignado</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin asignar" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="sin_asignar">Sin asignar</SelectItem>
+                        {users?.filter(u => u.tipoUsuario === 'propietario' && (!u.idApartamento || u.idApartamento === editingApartment?.id)).map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.primerNombre} {user.primerApellido}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
