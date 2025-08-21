@@ -249,7 +249,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartment,
+      apartment: result.apartments,
     }));
   }
 
@@ -265,7 +265,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartment,
+      apartment: result.apartments,
     }));
   }
 
@@ -282,7 +282,7 @@ export class DatabaseStorage implements IStorage {
     return {
       ...result.pagos,
       user: result.users,
-      apartment: result.apartment,
+      apartment: result.apartments,
     };
   }
 
@@ -365,7 +365,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => ({
       ...result.pagos,
       user: result.users,
-      apartment: result.apartment,
+      apartment: result.apartments,
     }));
   }
 
