@@ -56,7 +56,6 @@ export const apartments: any = pgTable("apartments", {
   piso: integer("piso").notNull(),
   numero: varchar("numero").notNull().unique(),
   alicuota: decimal("alicuota", { precision: 10, scale: 2 }).notNull(),
-  idUsuario: varchar("id_usuario").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -85,11 +84,7 @@ export const usersRelations: any = relations(users, ({ one, many }) => ({
   pagos: many(pagos),
 }));
 
-export const apartmentsRelations: any = relations(apartments, ({ one, many }) => ({
-  user: one(users, {
-    fields: [apartments.idUsuario],
-    references: [users.id],
-  }),
+export const apartmentsRelations: any = relations(apartments, ({ many }) => ({
   pagos: many(pagos),
 }));
 

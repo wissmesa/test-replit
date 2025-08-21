@@ -18,6 +18,7 @@ import { eq, and, desc, isNull, sql } from "drizzle-orm";
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUserByApartment(apartmentId: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<UserWithApartment | undefined>;
   getUsersWithApartments(): Promise<UserWithApartment[]>;
   createUser(user: InsertUser): Promise<User>;
@@ -49,6 +50,11 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByApartment(apartmentId: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.idApartamento, apartmentId));
     return user;
   }
 
@@ -188,8 +194,8 @@ export class DatabaseStorage implements IStorage {
 
   async assignUserToApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
     // Check if apartment already has another user assigned
-    const existingApartment = await this.getApartment(apartmentId);
-    if (existingApartment && existingApartment.idUsuario && existingApartment.idUsuario !== userId) {
+    const existingUserInApartment = await this.getUserByApartment(apartmentId);
+    if (existingUserInApartment && existingUserInApartment.id !== userId) {
       // Check if apartment has payments - if so, prevent user change
       const hasPayments = await this.hasApartmentPayments(apartmentId);
       if (hasPayments) {
@@ -197,7 +203,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Unassign previous user from apartment first
-      await this.unassignUserFromApartment(apartmentId, existingApartment.idUsuario);
+      await this.unassignUserFromApartment(apartmentId, existingUserInApartment.id);
     }
     
     // Check if user is already assigned to another apartment
@@ -214,21 +220,21 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Now assign the user to the apartment
-    const apartment = await this.updateApartment(apartmentId, { idUsuario: userId });
+    const apartment = await this.getApartment(apartmentId);
     const user = await this.updateUser(userId, { idApartamento: apartmentId });
     
     // Update pending payments for this apartment to be assigned to the new user
     await this.updatePendingPaymentsByApartment(apartmentId, userId);
     
-    return { apartment, user };
+    return { apartment: apartment!, user };
   }
 
   async unassignUserFromApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
-    // Remove the relationship from both sides
-    const apartment = await this.updateApartment(apartmentId, { idUsuario: null });
+    // Remove the relationship from user side only
+    const apartment = await this.getApartment(apartmentId);
     const user = await this.updateUser(userId, { idApartamento: null });
     
-    return { apartment, user };
+    return { apartment: apartment!, user };
   }
 
   // Payment operations
@@ -338,7 +344,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select()
       .from(apartments)
-      .leftJoin(users, eq(apartments.idUsuario, users.id))
+      .leftJoin(users, eq(users.idApartamento, apartments.id))
       .orderBy(apartments.numero);
     
     return results.map((result: any) => ({
