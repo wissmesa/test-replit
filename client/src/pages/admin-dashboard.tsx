@@ -724,7 +724,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Inquilinos Activos</p>
+                      <p className="text-sm text-gray-600">Propietarios Activos</p>
                       <p className="text-2xl font-bold text-gray-800">
                         {statsLoading ? "..." : stats?.activeUsers || 0}
                       </p>
@@ -801,7 +801,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="relative">
                   <Input
-                    placeholder="Buscar por inquilino..."
+                    placeholder="Buscar por propietario..."
                     value={filters.search}
                     onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                     className="pl-10"
@@ -850,7 +850,7 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Inquilino</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Monto</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Fecha Venc.</th>
@@ -1152,7 +1152,7 @@ export default function AdminDashboard() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="inquilino">Inquilino</SelectItem>
+                                  <SelectItem value="propietario">Propietario</SelectItem>
                                   <SelectItem value="admin">Administrador</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -1380,7 +1380,7 @@ export default function AdminDashboard() {
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Piso</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Alícuota</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Inquilino Asignado</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario Asignado</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
                     </tr>
                   </thead>
@@ -1674,7 +1674,7 @@ export default function AdminDashboard() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="inquilino">Inquilino</SelectItem>
+                        <SelectItem value="propietario">Propietario</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

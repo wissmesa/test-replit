@@ -24,7 +24,7 @@ export default function Landing() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="text-center p-3">
               <Users className="w-8 h-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Gestión de Inquilinos</p>
+              <p className="text-sm text-gray-600">Gestión de Propietarios</p>
             </div>
             <div className="text-center p-3">
               <CreditCard className="w-8 h-8 text-secondary mx-auto mb-2" />
