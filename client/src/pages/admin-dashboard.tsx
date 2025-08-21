@@ -529,6 +529,27 @@ export default function AdminDashboard() {
     },
   });
 
+  const deleteApartmentMutation = useMutation({
+    mutationFn: async (apartmentId: number) => {
+      await apiRequest("DELETE", `/api/apartments/${apartmentId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Apartamento eliminado",
+        description: "El apartamento ha sido eliminado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar apartamento",
+        description: error.message || "No se pudo eliminar el apartamento",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Edit apartment mutation
   const editApartmentMutation = useMutation({
     mutationFn: async (data: ApartmentFormData) => {
@@ -1780,7 +1801,17 @@ export default function AdminDashboard() {
                                 >
                                   <FileText className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    if (confirm("¿Estás seguro de que quieres eliminar este apartamento?")) {
+                                      deleteApartmentMutation.mutate(apartment.id);
+                                    }
+                                  }}
+                                  disabled={deleteApartmentMutation.isPending}
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>

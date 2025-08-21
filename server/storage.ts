@@ -125,6 +125,13 @@ export class DatabaseStorage implements IStorage {
       throw new Error("No se puede eliminar el usuario porque tiene pagos asociados");
     }
     
+    // Check if user is assigned to an apartment and unassign first
+    const user = await this.getUserByEmail(id); // This might fail, let's get user by id instead
+    const allUsers = await db.select().from(users).where(eq(users.id, id));
+    if (allUsers.length > 0 && allUsers[0].idApartamento) {
+      await this.unassignUserFromApartment(allUsers[0].idApartamento, id);
+    }
+    
     await db.delete(users).where(eq(users.id, id));
   }
 
@@ -157,6 +164,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteApartment(id: number): Promise<void> {
+    // First check if apartment has any payments
+    const apartmentPayments = await db
+      .select()
+      .from(pagos)
+      .where(eq(pagos.idApartamento, id));
+    
+    if (apartmentPayments.length > 0) {
+      throw new Error("No se puede eliminar el apartamento porque tiene pagos asociados");
+    }
+    
+    // Check if apartment has an assigned user and unassign first
+    const apartment = await this.getApartment(id);
+    if (apartment && apartment.idUsuario) {
+      await this.unassignUserFromApartment(id, apartment.idUsuario);
+    }
+    
     await db.delete(apartments).where(eq(apartments.id, id));
   }
 
