@@ -507,6 +507,28 @@ export default function AdminDashboard() {
     },
   });
 
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await apiRequest("DELETE", `/api/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar usuario",
+        description: error.message || "No se pudo eliminar el usuario",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Edit apartment mutation
   const editApartmentMutation = useMutation({
     mutationFn: async (data: ApartmentFormData) => {
@@ -620,6 +642,12 @@ export default function AdminDashboard() {
     setShowEditUserDialog(true);
   };
 
+  const handleDeleteUser = (user: UserWithApartment) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${user.primerNombre} ${user.primerApellido}?`)) {
+      deleteUserMutation.mutate(user.id);
+    }
+  };
+
   const handleEditApartment = (apartment: Apartment) => {
     setEditingApartment(apartment);
     editApartmentForm.reset({
@@ -717,7 +745,7 @@ export default function AdminDashboard() {
     setApartmentHistory(null);
     
     try {
-      const response = await apiRequest("GET", `/api/pagos/apartment/${apartment.id}`, {});
+      const response = await fetch(`/api/pagos/apartment/${apartment.id}`);
       const historyData = await response.json();
       setApartmentHistory(historyData);
     } catch (error) {
@@ -1503,7 +1531,12 @@ export default function AdminDashboard() {
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDeleteUser(userItem)}
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>

@@ -189,6 +189,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const sessionUserId = req.session.userId;
+      
+      // Prevent admin from deleting themselves
+      if (userId === sessionUserId) {
+        return res.status(400).json({ message: "No puedes eliminar tu propia cuenta" });
+      }
+
+      await storage.deleteUser(userId);
+      res.json({ message: "Usuario eliminado exitosamente" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "No se pudo eliminar el usuario" });
+    }
+  });
+
   // Apartment routes
   app.get('/api/apartments', isAuthenticated, async (req: any, res) => {
     try {
