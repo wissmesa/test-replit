@@ -2348,7 +2348,11 @@ export default function AdminDashboard() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Usuario Asignado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || "sin_asignar"}
+                      key={editingApartment?.id}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sin asignar" />
