@@ -129,6 +129,10 @@ export default function AdminDashboard() {
   const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<Apartment | null>(null);
   const [apartmentHistory, setApartmentHistory] = useState<PagoWithRelations[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  
+  // Pagination states for apartments
+  const [currentPageApartments, setCurrentPageApartments] = useState(1);
+  const [itemsPerPageApartments] = useState(10);
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -262,6 +266,25 @@ export default function AdminDashboard() {
     queryKey: ["/api/users"],
     enabled: !!user && user.tipoUsuario === 'admin',
   });
+
+  // Pagination logic for apartments
+  const totalApartments = apartments?.length || 0;
+  const totalPagesApartments = Math.ceil(totalApartments / itemsPerPageApartments);
+  const startIndexApartments = (currentPageApartments - 1) * itemsPerPageApartments;
+  const endIndexApartments = startIndexApartments + itemsPerPageApartments;
+  const paginatedApartments = apartments?.slice(startIndexApartments, endIndexApartments) || [];
+
+  const handlePreviousPageApartments = () => {
+    setCurrentPageApartments(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPageApartments = () => {
+    setCurrentPageApartments(prev => Math.min(prev + 1, totalPagesApartments));
+  };
+
+  const handlePageClickApartments = (page: number) => {
+    setCurrentPageApartments(page);
+  };
 
 
 
@@ -1739,7 +1762,7 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      apartments.map((apartment) => {
+                      paginatedApartments.map((apartment) => {
                         const assignedUser = users?.find(u => u.id === apartment.idUsuario);
                         return (
                           <tr key={apartment.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -1826,6 +1849,59 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Pagination for apartments */}
+              {totalApartments > 0 && (
+                <div className="flex justify-between items-center mt-6">
+                  <p className="text-sm text-gray-600">
+                    Mostrando {startIndexApartments + 1} - {Math.min(endIndexApartments, totalApartments)} de {totalApartments} apartamentos
+                  </p>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handlePreviousPageApartments}
+                      disabled={currentPageApartments === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, totalPagesApartments) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPagesApartments <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPageApartments <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPageApartments >= totalPagesApartments - 2) {
+                        pageNumber = totalPagesApartments - 4 + i;
+                      } else {
+                        pageNumber = currentPageApartments - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNumber}
+                          size="sm"
+                          variant={currentPageApartments === pageNumber ? "default" : "outline"}
+                          onClick={() => handlePageClickApartments(pageNumber)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleNextPageApartments}
+                      disabled={currentPageApartments === totalPagesApartments}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
