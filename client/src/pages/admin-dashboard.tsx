@@ -57,7 +57,7 @@ const apartmentSchema = z.object({
   numero: z.string().min(1, "Número de apartamento requerido"),
   piso: z.number().min(1, "Piso debe ser mayor a 0"),
   alicuota: z.string().min(1, "Alícuota requerida"),
-  idUsuario: z.string().optional()
+  idUsuario: z.string().min(1, "Debe seleccionar un propietario")
 });
 
 
@@ -656,10 +656,7 @@ export default function AdminDashboard() {
   };
 
   const onCreateApartment = async (data: ApartmentFormData) => {
-    createApartmentMutation.mutate({
-      ...data,
-      idUsuario: data.idUsuario === "sin_asignar" ? undefined : data.idUsuario,
-    });
+    createApartmentMutation.mutate(data);
   };
 
 
@@ -692,7 +689,7 @@ export default function AdminDashboard() {
       numero: apartment.numero,
       piso: apartment.piso,
       alicuota: apartment.alicuota,
-      idUsuario: apartment.user?.id || "sin_asignar"
+      idUsuario: apartment.user?.id || ""
     });
     setShowEditApartmentDialog(true);
   };
@@ -702,10 +699,7 @@ export default function AdminDashboard() {
   };
 
   const onEditApartment = async (data: ApartmentFormData) => {
-    editApartmentMutation.mutate({
-      ...data,
-      idUsuario: data.idUsuario === "sin_asignar" ? undefined : data.idUsuario,
-    });
+    editApartmentMutation.mutate(data);
   };
 
   const onCreatePago = async (data: PagoFormData) => {
@@ -1781,15 +1775,14 @@ export default function AdminDashboard() {
                           name="idUsuario"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Propietario Asignado (Opcional)</FormLabel>
+                              <FormLabel>Propietario Asignado</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Sin asignar" />
+                                    <SelectValue placeholder="Selecciona un propietario" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="sin_asignar">Sin asignar</SelectItem>
                                   {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
                                     <SelectItem key={user.id} value={user.id}>
                                       {user.primerNombre} {user.primerApellido}
@@ -2232,16 +2225,15 @@ export default function AdminDashboard() {
                     <FormLabel>Usuario Asignado</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      value={field.value || "sin_asignar"}
+                      value={field.value || ""}
                       key={editingApartment?.id}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sin asignar" />
+                          <SelectValue placeholder="Selecciona un propietario" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="sin_asignar">Sin asignar</SelectItem>
                         {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.primerNombre} {user.primerApellido}
