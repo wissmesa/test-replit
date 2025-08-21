@@ -534,13 +534,13 @@ export default function AdminDashboard() {
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case 'pagado':
-        return <Badge className="bg-secondary bg-opacity-10 text-secondary">Pagado</Badge>;
+        return <Badge className="bg-green-100 text-green-800 font-medium">Pagado</Badge>;
       case 'pendiente':
-        return <Badge className="bg-accent bg-opacity-10 text-accent">Pendiente</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 font-medium">Pendiente</Badge>;
       case 'vencido':
-        return <Badge className="bg-error bg-opacity-10 text-error">Vencido</Badge>;
+        return <Badge className="bg-red-100 text-red-800 font-medium">Vencido</Badge>;
       default:
-        return <Badge variant="outline">{estado}</Badge>;
+        return <Badge variant="outline" className="font-medium">{estado}</Badge>;
     }
   };
 
