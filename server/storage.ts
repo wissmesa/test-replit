@@ -204,7 +204,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select()
       .from(pagos)
-      .innerJoin(users, eq(pagos.idUsuario, users.id))
+      .leftJoin(users, eq(pagos.idUsuario, users.id))
       .innerJoin(apartments, eq(pagos.idApartamento, apartments.id))
       .orderBy(desc(pagos.fechaVencimiento));
     
@@ -235,7 +235,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(pagos)
-      .innerJoin(users, eq(pagos.idUsuario, users.id))
+      .leftJoin(users, eq(pagos.idUsuario, users.id))
       .innerJoin(apartments, eq(pagos.idApartamento, apartments.id))
       .where(eq(pagos.id, id));
     
@@ -287,7 +287,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select()
       .from(pagos)
-      .innerJoin(users, eq(pagos.idUsuario, users.id))
+      .leftJoin(users, eq(pagos.idUsuario, users.id))
       .innerJoin(apartments, eq(pagos.idApartamento, apartments.id))
       .where(eq(pagos.idApartamento, apartmentId))
       .orderBy(desc(pagos.fechaVencimiento));
