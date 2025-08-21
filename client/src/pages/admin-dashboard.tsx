@@ -89,12 +89,7 @@ const bulkPagoSchema = z.object({
   metodoPago: z.string().optional()
 });
 
-const bulkApartmentSchema = z.object({
-  startFloor: z.number().min(1, "Piso inicial requerido"),
-  endFloor: z.number().min(1, "Piso final requerido"),
-  unitsPerFloor: z.number().min(1, "Número de unidades por piso requerido"),
-  alicuota: z.string().min(1, "Alícuota requerida")
-});
+
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
@@ -102,7 +97,7 @@ type AssignUserFormData = z.infer<typeof assignUserSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
 type EditPagoFormData = z.infer<typeof editPagoSchema>;
 type BulkPagoFormData = z.infer<typeof bulkPagoSchema>;
-type BulkApartmentFormData = z.infer<typeof bulkApartmentSchema>;
+
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -127,7 +122,7 @@ export default function AdminDashboard() {
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [showEditPagoDialog, setShowEditPagoDialog] = useState(false);
   const [showBulkPagoDialog, setShowBulkPagoDialog] = useState(false);
-  const [showBulkApartmentDialog, setShowBulkApartmentDialog] = useState(false);
+
   const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
   const [showHistorialDialog, setShowHistorialDialog] = useState(false);
@@ -227,15 +222,7 @@ export default function AdminDashboard() {
     }
   });
 
-  const bulkApartmentForm = useForm<BulkApartmentFormData>({
-    resolver: zodResolver(bulkApartmentSchema),
-    defaultValues: {
-      startFloor: 2,
-      endFloor: 12,
-      unitsPerFloor: 4,
-      alicuota: "2.5"
-    }
-  });
+
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -569,29 +556,7 @@ export default function AdminDashboard() {
     },
   });
 
-  const bulkCreateApartmentsMutation = useMutation({
-    mutationFn: async (data: BulkApartmentFormData) => {
-      const response = await apiRequest("POST", "/api/apartments/bulk", data);
-      return response.json();
-    },
-    onSuccess: (result) => {
-      toast({
-        title: "Apartamentos creados",
-        description: result.message,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setShowBulkApartmentDialog(false);
-      bulkApartmentForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al crear apartamentos",
-        description: error.message || "No se pudieron crear los apartamentos en masa",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // Edit apartment mutation
   const editApartmentMutation = useMutation({
@@ -1642,129 +1607,117 @@ export default function AdminDashboard() {
                 <CardTitle className="text-xl font-bold text-gray-800">
                   Gestión de Apartamentos
                 </CardTitle>
-                <div className="flex space-x-2">
-                  <Dialog open={showApartmentDialog} onOpenChange={setShowApartmentDialog}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Nuevo Apartamento
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                  
-                  <Dialog open={showBulkApartmentDialog} onOpenChange={setShowBulkApartmentDialog}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        <Building className="w-4 h-4 mr-2" />
-                        Crear en Masa
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                </div>
+                <Dialog open={showApartmentDialog} onOpenChange={setShowApartmentDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nuevo Apartamento
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Crear Apartamento</DialogTitle>
+                      <DialogDescription>
+                        Registra un nuevo apartamento en el sistema
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...apartmentForm}>
+                      <form onSubmit={apartmentForm.handleSubmit(onCreateApartment)} className="space-y-4">
+                        <FormField
+                          control={apartmentForm.control}
+                          name="numero"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Número del Apartamento</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej: 101, A-1, etc." {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={apartmentForm.control}
+                          name="piso"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Piso</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  {...field} 
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={apartmentForm.control}
+                          name="alicuota"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Alícuota (%)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Ej: 2.5" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={apartmentForm.control}
+                          name="idUsuario"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Propietario Asignado (Opcional)</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sin asignar" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="sin_asignar">Sin asignar</SelectItem>
+                                  {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                      {user.primerNombre} {user.primerApellido}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex space-x-3 pt-4">
+                          <Button 
+                            type="submit" 
+                            className="flex-1" 
+                            disabled={createApartmentMutation.isPending}
+                          >
+                            {createApartmentMutation.isPending ? "Creando..." : "Crear Apartamento"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowApartmentDialog(false)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
-            
-            {/* Bulk Apartment Creation Dialog */}
-            <Dialog open={showBulkApartmentDialog} onOpenChange={setShowBulkApartmentDialog}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Crear Apartamentos en Masa</DialogTitle>
-                  <DialogDescription>
-                    Crea múltiples apartamentos automáticamente siguiendo un patrón
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...bulkApartmentForm}>
-                  <form onSubmit={bulkApartmentForm.handleSubmit((data) => bulkCreateApartmentsMutation.mutate(data))} className="space-y-4">
-                    <FormField
-                      control={bulkApartmentForm.control}
-                      name="startFloor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Piso Inicial</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="2" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={bulkApartmentForm.control}
-                      name="endFloor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Piso Final</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="12" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={bulkApartmentForm.control}
-                      name="unitsPerFloor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unidades por Piso</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="4" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={bulkApartmentForm.control}
-                      name="alicuota"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alícuota (%)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="2.5" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowBulkApartmentDialog(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={bulkCreateApartmentsMutation.isPending}>
-                        {bulkCreateApartmentsMutation.isPending ? "Creando..." : "Crear Apartamentos"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Single Apartment Creation Dialog */}
-            <Dialog open={showApartmentDialog} onOpenChange={setShowApartmentDialog}>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Crear Apartamento</DialogTitle>
