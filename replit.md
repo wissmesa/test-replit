@@ -37,7 +37,7 @@ The application uses PostgreSQL with three main entities:
 ### Authentication & Authorization
 - **Provider**: Replit Auth using OpenID Connect
 - **Session Storage**: PostgreSQL-backed sessions with connect-pg-simple
-- **Role System**: Two-tier access control (admin/inquilino)
+- **Role System**: Two-tier access control (admin/propietario)
 - **Security**: HTTP-only cookies with secure flags in production
 
 ### Data Validation

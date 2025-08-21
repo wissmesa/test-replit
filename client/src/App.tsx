@@ -21,7 +21,7 @@ function Router() {
           <Route path="/" component={() => {
             if (user?.tipoUsuario === 'admin') {
               return <AdminDashboard />;
-            } else if (user?.tipoUsuario === 'inquilino') {
+            } else if (user?.tipoUsuario === 'propietario') {
               return <TenantDashboard />;
             } else {
               return <LoginPage />;

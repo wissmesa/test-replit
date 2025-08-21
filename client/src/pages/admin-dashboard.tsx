@@ -48,7 +48,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Contraseña debe tener al menos 6 caracteres"),
   identificacion: z.string().min(1, "Identificación requerida"),
   tipoIdentificacion: z.enum(["pasaporte", "cedula", "rif"]),
-  tipoUsuario: z.enum(["admin", "inquilino"]),
+  tipoUsuario: z.enum(["admin", "propietario"]),
 });
 
 const apartmentSchema = z.object({
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
       password: "",
       identificacion: "",
       tipoIdentificacion: "cedula",
-      tipoUsuario: "inquilino",
+      tipoUsuario: "propietario",
     },
   });
 
@@ -144,7 +144,7 @@ export default function AdminDashboard() {
       correo: "",
       identificacion: "",
       tipoIdentificacion: "cedula",
-      tipoUsuario: "inquilino"
+      tipoUsuario: "propietario"
     }
   });
 
@@ -1246,7 +1246,7 @@ export default function AdminDashboard() {
                                 ? "font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm" 
                                 : "font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md text-sm"
                             }>
-                              {userItem.tipoUsuario === 'admin' ? 'Admin' : 'Inquilino'}
+                              {userItem.tipoUsuario === 'admin' ? 'Admin' : 'Propietario'}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -1489,7 +1489,7 @@ export default function AdminDashboard() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users?.filter(u => u.tipoUsuario === 'inquilino' && !u.idApartamento).map(user => (
+                        {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.primerNombre} {user.primerApellido} - {user.correo}
                           </SelectItem>
@@ -1814,7 +1814,7 @@ export default function AdminDashboard() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {users?.filter(u => u.tipoUsuario === 'inquilino').map(user => (
+                          {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.primerNombre} {user.primerApellido}
                             </SelectItem>

@@ -43,7 +43,7 @@ export const users: any = pgTable("users", {
   correo: varchar("correo").notNull().unique(),
   contrasena: varchar("contrasena").notNull(),
   identificacion: varchar("identificacion").notNull().unique(),
-  tipoUsuario: varchar("tipo_usuario").notNull().$type<'admin' | 'inquilino'>(),
+  tipoUsuario: varchar("tipo_usuario").notNull().$type<'admin' | 'propietario'>(),
   tipoIdentificacion: varchar("tipo_identificacion").notNull().$type<'pasaporte' | 'cedula' | 'rif'>(),
   idApartamento: integer("id_apartamento").references(() => apartments.id),
   

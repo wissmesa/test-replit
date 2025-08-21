@@ -51,7 +51,7 @@ export default function TenantDashboard() {
 
   // Redirect if not authenticated or not tenant
   useEffect(() => {
-    if (!authLoading && (!user || user.tipoUsuario !== 'inquilino')) {
+    if (!authLoading && (!user || user.tipoUsuario !== 'propietario')) {
       toast({
         title: "No autorizado",
         description: "Redirigiendo al login...",
@@ -67,7 +67,7 @@ export default function TenantDashboard() {
   // Fetch user's payments
   const { data: pagos, isLoading: pagosLoading } = useQuery<PagoWithRelations[]>({
     queryKey: ["/api/pagos"],
-    enabled: !!user && user.tipoUsuario === 'inquilino',
+    enabled: !!user && user.tipoUsuario === 'propietario',
   });
 
   // Profile form
@@ -203,7 +203,7 @@ export default function TenantDashboard() {
     updateProfileMutation.mutate(data);
   };
 
-  if (authLoading || !user || user.tipoUsuario !== 'inquilino') {
+  if (authLoading || !user || user.tipoUsuario !== 'propietario') {
     return <LoadingModal isOpen={true} message="Cargando..." />;
   }
 
@@ -221,7 +221,7 @@ export default function TenantDashboard() {
               </div>
               <div>
                 <h1 className="font-bold text-gray-800">CondoManager</h1>
-                <p className="text-xs text-gray-600">Portal del Inquilino</p>
+                <p className="text-xs text-gray-600">Portal del Propietario</p>
               </div>
             </div>
             

@@ -2,6 +2,6 @@ declare module 'express-session' {
   interface SessionData {
     userId: string;
     userEmail: string;
-    userType: 'admin' | 'inquilino';
+    userType: 'admin' | 'propietario';
   }
 }

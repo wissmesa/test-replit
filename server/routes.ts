@@ -450,7 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const stats = {
         totalApartments: apartments.length,
-        activeUsers: users.filter((u: any) => u.tipoUsuario === 'inquilino').length,
+        activeUsers: users.filter((u: any) => u.tipoUsuario === 'propietario').length,
         pendingPayments,
         monthlyIncome
       };
