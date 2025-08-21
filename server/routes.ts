@@ -308,6 +308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await storage.assignUserToApartment(apartmentId, userId);
+      
+      // Update pending payments for this apartment to assign the new user
+      await storage.updatePendingPaymentsByApartment(apartmentId, userId);
+      
       res.json(result);
     } catch (error) {
       console.error("Error assigning user to apartment:", error);
@@ -329,6 +333,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await storage.unassignUserFromApartment(apartmentId, userId);
+      
+      // Update pending payments for this apartment to remove user assignment
+      await storage.unassignPendingPaymentsByApartment(apartmentId, userId);
+      
       res.json(result);
     } catch (error) {
       console.error("Error unassigning user from apartment:", error);

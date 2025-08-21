@@ -13,7 +13,7 @@ import {
   type PagoWithRelations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -40,6 +40,8 @@ export interface IStorage {
   createPago(pago: InsertPago): Promise<Pago>;
   updatePago(id: string, pago: Partial<InsertPago>): Promise<Pago>;
   deletePago(id: string): Promise<void>;
+  updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
+  unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -268,6 +270,38 @@ export class DatabaseStorage implements IStorage {
 
   async deletePago(id: string): Promise<void> {
     await db.delete(pagos).where(eq(pagos.id, id));
+  }
+
+  async updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void> {
+    await db
+      .update(pagos)
+      .set({ 
+        idUsuario: userId,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(pagos.idApartamento, apartmentId),
+          eq(pagos.estado, 'pendiente'),
+          isNull(pagos.idUsuario)
+        )
+      );
+  }
+
+  async unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void> {
+    await db
+      .update(pagos)
+      .set({ 
+        idUsuario: null,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(pagos.idApartamento, apartmentId),
+          eq(pagos.estado, 'pendiente'),
+          eq(pagos.idUsuario, userId)
+        )
+      );
   }
 
   async getApartmentsWithUsers(): Promise<any[]> {
