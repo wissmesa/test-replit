@@ -60,6 +60,11 @@ const apartmentSchema = z.object({
   idUsuario: z.string().min(1, "Debe seleccionar un propietario")
 });
 
+const editApartmentSchema = z.object({
+  numero: z.string().min(1, "Número de apartamento requerido"),
+  piso: z.number().min(1, "Piso debe ser mayor a 0"),
+  alicuota: z.string().min(1, "Alícuota requerida")
+});
 
 const pagoSchema = z.object({
   idUsuario: z.string().min(1, "Debe seleccionar un usuario"),
@@ -90,6 +95,7 @@ const bulkPagoSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
+type EditApartmentFormData = z.infer<typeof editApartmentSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
 type EditPagoFormData = z.infer<typeof editPagoSchema>;
 type BulkPagoFormData = z.infer<typeof bulkPagoSchema>;
@@ -180,13 +186,12 @@ export default function AdminDashboard() {
     }
   });
 
-  const editApartmentForm = useForm<ApartmentFormData>({
-    resolver: zodResolver(apartmentSchema),
+  const editApartmentForm = useForm<EditApartmentFormData>({
+    resolver: zodResolver(editApartmentSchema),
     defaultValues: {
       numero: "",
       piso: 1,
-      alicuota: "",
-      idUsuario: "sin_asignar"
+      alicuota: ""
     }
   });
 
@@ -582,7 +587,7 @@ export default function AdminDashboard() {
 
   // Edit apartment mutation
   const editApartmentMutation = useMutation({
-    mutationFn: async (data: ApartmentFormData) => {
+    mutationFn: async (data: EditApartmentFormData) => {
       if (!editingApartment) throw new Error("No apartment selected for editing");
       await apiRequest("PUT", `/api/apartments/${editingApartment.id}`, {
         ...data,
@@ -688,8 +693,7 @@ export default function AdminDashboard() {
     editApartmentForm.reset({
       numero: apartment.numero,
       piso: apartment.piso,
-      alicuota: apartment.alicuota,
-      idUsuario: apartment.user?.id || ""
+      alicuota: apartment.alicuota
     });
     setShowEditApartmentDialog(true);
   };
@@ -698,7 +702,7 @@ export default function AdminDashboard() {
     editUserMutation.mutate(data);
   };
 
-  const onEditApartment = async (data: ApartmentFormData) => {
+  const onEditApartment = async (data: EditApartmentFormData) => {
     editApartmentMutation.mutate(data);
   };
 
@@ -2212,38 +2216,6 @@ export default function AdminDashboard() {
                     <FormControl>
                       <Input placeholder="Ej: 8.50" type="number" step="0.01" {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editApartmentForm.control}
-                name="idUsuario"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Usuario Asignado</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || ""}
-                      key={editingApartment?.id}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un propietario" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.primerNombre} {user.primerApellido}
-                            {user.idApartamento && user.idApartamento !== editingApartment?.id && (
-                              <span className="text-xs text-gray-500 ml-1">(Asignado)</span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
