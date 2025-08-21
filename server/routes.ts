@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let apartment;
       
       // Handle user assignment changes first, then update apartment basic data
-      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined)) {
+      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "sin_asignar")) {
         // User is being unassigned
         const result = await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
         await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
