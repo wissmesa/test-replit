@@ -133,6 +133,16 @@ export default function AdminDashboard() {
   // Pagination states for apartments
   const [currentPageApartments, setCurrentPageApartments] = useState(1);
   const [itemsPerPageApartments] = useState(10);
+  
+  // Pagination states for users
+  const [currentPageUsers, setCurrentPageUsers] = useState(1);
+  const [itemsPerPageUsers] = useState(10);
+  
+  // Filter states for users
+  const [usersFilters, setUsersFilters] = useState({
+    search: "",
+    tipoUsuario: "all"
+  });
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -286,7 +296,35 @@ export default function AdminDashboard() {
     setCurrentPageApartments(page);
   };
 
+  // Pagination logic for users
+  const filteredUsers = users?.filter(user => {
+    const matchesSearch = 
+      `${user.primerNombre} ${user.segundoNombre} ${user.primerApellido} ${user.segundoApellido}`.toLowerCase().includes(usersFilters.search.toLowerCase()) ||
+      user.correo.toLowerCase().includes(usersFilters.search.toLowerCase()) ||
+      user.identificacion.toLowerCase().includes(usersFilters.search.toLowerCase());
+    
+    const matchesTipo = usersFilters.tipoUsuario === "all" || user.tipoUsuario === usersFilters.tipoUsuario;
+    
+    return matchesSearch && matchesTipo;
+  }) || [];
+  
+  const totalUsers = filteredUsers.length;
+  const totalPagesUsers = Math.ceil(totalUsers / itemsPerPageUsers);
+  const startIndexUsers = (currentPageUsers - 1) * itemsPerPageUsers;
+  const endIndexUsers = startIndexUsers + itemsPerPageUsers;
+  const paginatedUsers = filteredUsers.slice(startIndexUsers, endIndexUsers);
 
+  const handlePreviousPageUsers = () => {
+    setCurrentPageUsers(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPageUsers = () => {
+    setCurrentPageUsers(prev => Math.min(prev + 1, totalPagesUsers));
+  };
+
+  const handlePageClickUsers = (page: number) => {
+    setCurrentPageUsers(page);
+  };
 
   // Mark payment as paid mutation
   const markAsPaidMutation = useMutation({
@@ -1529,6 +1567,37 @@ export default function AdminDashboard() {
             </CardHeader>
             
             <CardContent>
+              {/* Users Filters */}
+              <div className="mb-4 flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Buscar por nombre, email o identificación..."
+                    value={usersFilters.search}
+                    onChange={(e) => setUsersFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="max-w-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={usersFilters.tipoUsuario} onValueChange={(value) => setUsersFilters(prev => ({ ...prev, tipoUsuario: value }))}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Tipo de usuario" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="propietario">Propietario</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Users Results Info */}
+              <div className="mb-4 flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Mostrando {paginatedUsers.length} de {totalUsers} usuarios
+                </p>
+              </div>
+
               {/* Users Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -1549,14 +1618,16 @@ export default function AdminDashboard() {
                           Cargando usuarios...
                         </td>
                       </tr>
-                    ) : !users || users.length === 0 ? (
+                    ) : !paginatedUsers || paginatedUsers.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-8 text-gray-500">
-                          No hay usuarios para mostrar
+                          {usersFilters.search || usersFilters.tipoUsuario !== "all" 
+                            ? "No se encontraron usuarios con los filtros aplicados" 
+                            : "No hay usuarios para mostrar"}
                         </td>
                       </tr>
                     ) : (
-                      users.map((userItem) => (
+                      paginatedUsers.map((userItem) => (
                         <tr key={userItem.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-3">
@@ -1618,6 +1689,62 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Users Pagination */}
+              {totalPagesUsers > 1 && (
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-sm text-gray-600">
+                    Página {currentPageUsers} de {totalPagesUsers}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePreviousPageUsers}
+                      disabled={currentPageUsers === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex space-x-1">
+                      {Array.from({ length: Math.min(5, totalPagesUsers) }, (_, i) => {
+                        let pageNum;
+                        if (totalPagesUsers <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPageUsers <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPageUsers >= totalPagesUsers - 2) {
+                          pageNum = totalPagesUsers - 4 + i;
+                        } else {
+                          pageNum = currentPageUsers - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPageUsers === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageClickUsers(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNextPageUsers}
+                      disabled={currentPageUsers === totalPagesUsers}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
