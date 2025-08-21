@@ -276,19 +276,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentApartment = await storage.getApartment(apartmentId);
       const apartmentData = req.body;
       
+      let apartment;
+      
       // Handle user assignment changes first, then update apartment basic data
       if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined)) {
         // User is being unassigned
-        await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
+        const result = await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
         await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
+        
+        // Update apartment basic data (excluding user assignment as it's already handled)
+        const { idUsuario, ...basicApartmentData } = apartmentData;
+        apartment = await storage.updateApartment(apartmentId, basicApartmentData);
+        // Ensure the response shows the apartment as unassigned
+        apartment.idUsuario = null;
       } else if (apartmentData.idUsuario && (!currentApartment?.idUsuario || currentApartment.idUsuario !== apartmentData.idUsuario)) {
         // User is being assigned or changed - this handles uniqueness validation
-        await storage.assignUserToApartment(apartmentId, apartmentData.idUsuario);
+        const result = await storage.assignUserToApartment(apartmentId, apartmentData.idUsuario);
+        
+        // Update apartment basic data (excluding user assignment as it's already handled)
+        const { idUsuario, ...basicApartmentData } = apartmentData;
+        apartment = await storage.updateApartment(apartmentId, basicApartmentData);
+        // Ensure the response shows the correct user assignment
+        apartment.idUsuario = apartmentData.idUsuario;
+      } else {
+        // No user assignment changes, just update basic data
+        apartment = await storage.updateApartment(apartmentId, apartmentData);
       }
-      
-      // Update apartment basic data (excluding user assignment as it's handled above)
-      const { idUsuario, ...basicApartmentData } = apartmentData;
-      const apartment = await storage.updateApartment(apartmentId, basicApartmentData);
       
       res.json(apartment);
     } catch (error) {
