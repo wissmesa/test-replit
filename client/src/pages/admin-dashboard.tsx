@@ -1842,12 +1842,9 @@ export default function AdminDashboard() {
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="sin_asignar">Sin asignar</SelectItem>
-                                  {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
+                                  {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
                                     <SelectItem key={user.id} value={user.id}>
                                       {user.primerNombre} {user.primerApellido}
-                                      {user.idApartamento && (
-                                        <span className="text-xs text-gray-500 ml-1">(Asignado)</span>
-                                      )}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
