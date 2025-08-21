@@ -2229,7 +2229,7 @@ export default function AdminDashboard() {
                 name="idUsuario"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Propietario Asignado</FormLabel>
+                    <FormLabel>Usuario Asignado</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
                       value={field.value || "sin_asignar"}
@@ -2242,9 +2242,12 @@ export default function AdminDashboard() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="sin_asignar">Sin asignar</SelectItem>
-                        {users?.filter(u => u.tipoUsuario === 'propietario' && (editingApartment?.user?.id === u.id || !u.idApartamento)).map(user => (
+                        {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.primerNombre} {user.primerApellido}
+                            {user.idApartamento && user.idApartamento !== editingApartment?.id && (
+                              <span className="text-xs text-gray-500 ml-1">(Asignado)</span>
+                            )}
                           </SelectItem>
                         ))}
                       </SelectContent>
