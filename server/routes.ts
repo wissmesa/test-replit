@@ -327,7 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             idUsuario: apt.user.id,
             idApartamento: apt.id,
             monto: montoIndividual,
-            fechaVencimiento: new Date(fechaVencimiento).toISOString(),
+            fechaVencimiento: new Date(fechaVencimiento),
             concepto,
             metodoPago: metodoPago || "sin_especificar",
             estado: 'pendiente' as const
