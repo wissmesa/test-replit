@@ -2345,7 +2345,7 @@ export default function AdminDashboard() {
                   
                   return (
                     <FormItem>
-                      <FormLabel>Usuario Asignado</FormLabel>
+                      <FormLabel>Propietario Asignado</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value || "sin_asignar"}
