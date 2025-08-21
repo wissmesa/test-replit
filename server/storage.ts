@@ -13,7 +13,7 @@ import {
   type PagoWithRelations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -38,6 +38,7 @@ export interface IStorage {
   getPagosByUser(userId: string): Promise<PagoWithRelations[]>;
   getPago(id: string): Promise<PagoWithRelations | undefined>;
   createPago(pago: InsertPago): Promise<Pago>;
+  hasApartmentPayments(apartmentId: number): Promise<boolean>;
   updatePago(id: string, pago: Partial<InsertPago>): Promise<Pago>;
   deletePago(id: string): Promise<void>;
   updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
@@ -186,18 +187,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async assignUserToApartment(apartmentId: number, userId: string): Promise<{ apartment: Apartment; user: User }> {
-    // Check if user is already assigned to another apartment
-    const existingUser = await this.getUser(userId);
-    if (existingUser && existingUser.idApartamento && existingUser.idApartamento !== apartmentId) {
-      // Unassign user from previous apartment first
-      await this.unassignUserFromApartment(existingUser.idApartamento, userId);
-    }
-    
     // Check if apartment already has another user assigned
     const existingApartment = await this.getApartment(apartmentId);
     if (existingApartment && existingApartment.idUsuario && existingApartment.idUsuario !== userId) {
+      // Check if apartment has payments - if so, prevent user change
+      const hasPayments = await this.hasApartmentPayments(apartmentId);
+      if (hasPayments) {
+        throw new Error("No se puede cambiar el usuario asignado porque este apartamento tiene pagos asociados. Debe eliminar la asociación actual primero.");
+      }
+      
       // Unassign previous user from apartment first
       await this.unassignUserFromApartment(apartmentId, existingApartment.idUsuario);
+    }
+    
+    // Check if user is already assigned to another apartment
+    const existingUser = await this.getUser(userId);
+    if (existingUser && existingUser.idApartamento && existingUser.idApartamento !== apartmentId) {
+      // Check if user's current apartment has payments - if so, prevent reassignment
+      const hasPayments = await this.hasApartmentPayments(existingUser.idApartamento);
+      if (hasPayments) {
+        throw new Error("No se puede reasignar este usuario porque su apartamento actual tiene pagos asociados. Debe eliminar la asociación actual primero.");
+      }
+      
+      // Unassign user from previous apartment first
+      await this.unassignUserFromApartment(existingUser.idApartamento, userId);
     }
     
     // Now assign the user to the apartment
@@ -348,6 +361,15 @@ export class DatabaseStorage implements IStorage {
       user: result.users,
       apartment: result.apartments,
     }));
+  }
+
+  async hasApartmentPayments(apartmentId: number): Promise<boolean> {
+    const payments = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(pagos)
+      .where(eq(pagos.idApartamento, apartmentId));
+    
+    return payments[0].count > 0;
   }
 }
 

@@ -306,6 +306,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(apartment);
     } catch (error) {
       console.error("Error updating apartment:", error);
+      
+      // Handle specific payment validation errors
+      if (error instanceof Error && error.message.includes("pagos asociados")) {
+        return res.status(400).json({ message: error.message });
+      }
+      
       res.status(500).json({ message: "Failed to update apartment" });
     }
   });
