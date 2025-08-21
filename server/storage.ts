@@ -115,6 +115,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
+    // First check if user has any payments
+    const userPayments = await db
+      .select()
+      .from(pagos)
+      .where(eq(pagos.idUsuario, id));
+    
+    if (userPayments.length > 0) {
+      throw new Error("No se puede eliminar el usuario porque tiene pagos asociados");
+    }
+    
     await db.delete(users).where(eq(users.id, id));
   }
 

@@ -819,6 +819,13 @@ export default function AdminDashboard() {
     if (filters.status && filters.status !== "all" && pago.estado !== filters.status) {
       return false;
     }
+    if (filters.month) {
+      const pagoDate = new Date(pago.fechaVencimiento);
+      const filterDate = new Date(filters.month + "-01");
+      if (pagoDate.getMonth() !== filterDate.getMonth() || pagoDate.getFullYear() !== filterDate.getFullYear()) {
+        return false;
+      }
+    }
     return true;
   }) || [];
 
@@ -1098,11 +1105,23 @@ export default function AdminDashboard() {
                     <SelectItem value="vencido">Vencido</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  type="month"
-                  value={filters.month}
-                  onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value }))}
-                />
+                <div className="relative">
+                  <Input
+                    type="month"
+                    value={filters.month}
+                    onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value }))}
+                    placeholder="Filtrar por mes/año"
+                  />
+                  {filters.month && (
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, month: "" }))}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                      title="Limpiar filtro de fecha"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
               
               {/* Payments Table */}
