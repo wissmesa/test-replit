@@ -359,6 +359,38 @@ export default function AdminDashboard() {
     },
   });
 
+  const deletePagoMutation = useMutation({
+    mutationFn: async (pagoId: string) => {
+      await apiRequest('DELETE', `/api/pagos/${pagoId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "Éxito",
+        description: "Pago eliminado correctamente",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Register user mutation
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterFormData) => {
@@ -678,6 +710,12 @@ export default function AdminDashboard() {
 
   const onBulkPagoSubmit = (data: BulkPagoFormData) => {
     bulkPagoMutation.mutate(data);
+  };
+
+  const handleDeletePago = (pago: PagoWithRelations) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el pago de ${pago.user.primerNombre} ${pago.user.primerApellido} por ${formatCurrency(pago.monto)}?`)) {
+      deletePagoMutation.mutate(pago.id);
+    }
   };
 
   const getStatusBadge = (estado: string) => {
@@ -1094,6 +1132,15 @@ export default function AdminDashboard() {
                                 onClick={() => handleEditPago(pago)}
                               >
                                 {pago.estado === 'pagado' ? 'Ver Detalles' : 'Editar'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeletePago(pago)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Eliminar pago"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                           </td>
@@ -2367,7 +2414,7 @@ export default function AdminDashboard() {
       </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending || deletePagoMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
@@ -2377,7 +2424,8 @@ export default function AdminDashboard() {
           editApartmentMutation.isPending ? "Actualizando apartamento..." :
           createPagoMutation.isPending ? "Creando pago..." : 
           editPagoMutation.isPending ? "Actualizando pago..." :
-          bulkPagoMutation.isPending ? "Generando pagos en masa..." : "Procesando..."
+          bulkPagoMutation.isPending ? "Generando pagos en masa..." : 
+          deletePagoMutation.isPending ? "Eliminando pago..." : "Procesando..."
         } 
       />
     </div>
