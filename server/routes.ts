@@ -271,8 +271,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(apartmentId)) {
         return res.status(400).json({ message: "Invalid apartment ID" });
       }
+      
+      // Get current apartment state to check if user is being unassigned
+      const currentApartment = await storage.getApartment(apartmentId);
       const apartmentData = req.body;
+      
+      // Update apartment
       const apartment = await storage.updateApartment(apartmentId, apartmentData);
+      
+      // Handle payment updates based on user assignment changes
+      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined)) {
+        // User is being unassigned - remove user from pending payments
+        await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
+      } else if (!currentApartment?.idUsuario && apartmentData.idUsuario) {
+        // User is being assigned - assign user to pending payments
+        await storage.updatePendingPaymentsByApartment(apartmentId, apartmentData.idUsuario);
+      } else if (currentApartment?.idUsuario && apartmentData.idUsuario && currentApartment.idUsuario !== apartmentData.idUsuario) {
+        // User is being changed - first unassign old user, then assign new user
+        await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
+        await storage.updatePendingPaymentsByApartment(apartmentId, apartmentData.idUsuario);
+      }
+      
       res.json(apartment);
     } catch (error) {
       console.error("Error updating apartment:", error);
