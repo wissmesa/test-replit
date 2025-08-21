@@ -1942,13 +1942,6 @@ export default function AdminDashboard() {
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => handleAssignUser(apartment)}
-                                >
-                                  <UserPlus className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
                                   onClick={() => handleEditApartment(apartment)}
                                 >
                                   <Edit className="w-4 h-4" />
