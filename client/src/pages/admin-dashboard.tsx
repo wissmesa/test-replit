@@ -72,10 +72,19 @@ const pagoSchema = z.object({
   comprobanteUrl: z.string().optional()
 });
 
+const editPagoSchema = z.object({
+  monto: z.string().min(1, "Monto requerido"),
+  fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
+  concepto: z.string().min(1, "Concepto requerido"),
+  metodoPago: z.string().optional(),
+  estado: z.enum(["pendiente", "pagado", "vencido"]).optional()
+});
+
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
 type AssignUserFormData = z.infer<typeof assignUserSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
+type EditPagoFormData = z.infer<typeof editPagoSchema>;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -98,6 +107,8 @@ export default function AdminDashboard() {
     month: ""
   });
   const [showPagoDialog, setShowPagoDialog] = useState(false);
+  const [showEditPagoDialog, setShowEditPagoDialog] = useState(false);
+  const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
 
   const registerForm = useForm<RegisterFormData>({
@@ -171,6 +182,17 @@ export default function AdminDashboard() {
     }
   });
 
+  const editPagoForm = useForm<EditPagoFormData>({
+    resolver: zodResolver(editPagoSchema),
+    defaultValues: {
+      monto: "",
+      fechaVencimiento: "",
+      concepto: "",
+      metodoPago: "",
+      estado: "pendiente"
+    }
+  });
+
   // Redirect if not authenticated or not admin
   useEffect(() => {
     if (!authLoading && (!user || user.tipoUsuario !== 'admin')) {
@@ -224,6 +246,40 @@ export default function AdminDashboard() {
       toast({
         title: "Éxito",
         description: "Pago marcado como pagado",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const editPagoMutation = useMutation({
+    mutationFn: async ({ pagoId, data }: { pagoId: string; data: EditPagoFormData }) => {
+      await apiRequest('PUT', `/api/pagos/${pagoId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setShowEditPagoDialog(false);
+      setEditingPago(null);
+      toast({
+        title: "Éxito",
+        description: "Pago actualizado correctamente",
       });
     },
     onError: (error) => {
@@ -529,6 +585,38 @@ export default function AdminDashboard() {
         });
       }
     }
+  };
+
+  const handleEditPago = (pago: PagoWithRelations) => {
+    setEditingPago(pago);
+    editPagoForm.reset({
+      monto: pago.monto,
+      fechaVencimiento: new Date(pago.fechaVencimiento).toISOString().split('T')[0],
+      concepto: pago.concepto,
+      metodoPago: pago.metodoPago || "",
+      estado: pago.estado as "pendiente" | "pagado" | "vencido"
+    });
+    setShowEditPagoDialog(true);
+  };
+
+  const handleViewDocument = (comprobanteUrl: string) => {
+    // Open document in a new tab using the internal server route
+    const documentUrl = comprobanteUrl.startsWith('/objects/') 
+      ? comprobanteUrl 
+      : comprobanteUrl;
+    window.open(documentUrl, '_blank');
+  };
+
+  const onEditPagoSubmit = (data: EditPagoFormData) => {
+    if (!editingPago) return;
+    
+    editPagoMutation.mutate({
+      pagoId: editingPago.id,
+      data: {
+        ...data,
+        fechaVencimiento: new Date(data.fechaVencimiento).toISOString()
+      }
+    });
   };
 
   const getStatusBadge = (estado: string) => {
@@ -912,7 +1000,7 @@ export default function AdminDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => window.open((pago as any).comprobanteUrl, '_blank')}
+                                onClick={() => handleViewDocument((pago as any).comprobanteUrl)}
                               >
                                 Ver Comprobante
                               </Button>
@@ -932,7 +1020,11 @@ export default function AdminDashboard() {
                                   Marcar Pagado
                                 </Button>
                               )}
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleEditPago(pago)}
+                              >
                                 {pago.estado === 'pagado' ? 'Ver Detalles' : 'Editar'}
                               </Button>
                             </div>
@@ -1954,9 +2046,134 @@ export default function AdminDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Pago Dialog */}
+      <Dialog open={showEditPagoDialog} onOpenChange={setShowEditPagoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Pago</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del pago
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editPagoForm}>
+            <form onSubmit={editPagoForm.handleSubmit(onEditPagoSubmit)} className="space-y-4">
+              <FormField
+                control={editPagoForm.control}
+                name="concepto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Concepto</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Alícuota Enero 2024" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editPagoForm.control}
+                name="monto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monto (USD)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: 150.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editPagoForm.control}
+                name="fechaVencimiento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Vencimiento</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editPagoForm.control}
+                name="metodoPago"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Método de Pago</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar método" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="pago_movil">Pago Móvil</SelectItem>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="zelle">Zelle</SelectItem>
+                          <SelectItem value="paypal">PayPal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editPagoForm.control}
+                name="estado"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="pagado">Pagado</SelectItem>
+                          <SelectItem value="vencido">Vencido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={editPagoMutation.isPending}
+                >
+                  {editPagoMutation.isPending ? "Actualizando..." : "Actualizar Pago"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowEditPagoDialog(false);
+                    setEditingPago(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending} 
+        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || assignUserMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending} 
         message={
           markAsPaidMutation.isPending ? "Actualizando pago..." : 
           registerMutation.isPending ? "Registrando usuario..." :
@@ -1964,7 +2181,8 @@ export default function AdminDashboard() {
           assignUserMutation.isPending ? "Asignando usuario..." :
           editUserMutation.isPending ? "Actualizando usuario..." :
           editApartmentMutation.isPending ? "Actualizando apartamento..." :
-          createPagoMutation.isPending ? "Creando pago..." : "Procesando..."
+          createPagoMutation.isPending ? "Creando pago..." : 
+          editPagoMutation.isPending ? "Actualizando pago..." : "Procesando..."
         } 
       />
     </div>
