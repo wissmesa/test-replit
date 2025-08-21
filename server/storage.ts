@@ -221,7 +221,7 @@ export class DatabaseStorage implements IStorage {
     
     // Now assign the user to the apartment
     const apartment = await this.getApartment(apartmentId);
-    const user = await this.updateUser(userId, { idApartamento: apartmentId });
+    const user = await this.updateUser(userId, { idApartamento: apartmentId as any });
     
     // Update pending payments for this apartment to be assigned to the new user
     await this.updatePendingPaymentsByApartment(apartmentId, userId);
