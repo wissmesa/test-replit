@@ -1993,7 +1993,22 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Método de Pago (Opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Transferencia bancaria" {...field} />
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar método de pago" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin especificar</SelectItem>
+                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="pago_movil">Pago Móvil</SelectItem>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="zelle">Zelle</SelectItem>
+                          <SelectItem value="paypal">PayPal</SelectItem>
+                          <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
+                          <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
+                          <SelectItem value="binance">Binance Pay</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2112,11 +2127,15 @@ export default function AdminDashboard() {
                           <SelectValue placeholder="Seleccionar método" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="">Sin especificar</SelectItem>
                           <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                           <SelectItem value="efectivo">Efectivo</SelectItem>
                           <SelectItem value="zelle">Zelle</SelectItem>
                           <SelectItem value="paypal">PayPal</SelectItem>
+                          <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
+                          <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
+                          <SelectItem value="binance">Binance Pay</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
