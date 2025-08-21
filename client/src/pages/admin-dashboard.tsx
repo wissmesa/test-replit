@@ -2338,34 +2338,37 @@ export default function AdminDashboard() {
               <FormField
                 control={editApartmentForm.control}
                 name="idUsuario"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Usuario Asignado</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || "sin_asignar"}
-                      key={editingApartment?.id}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sin asignar" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="sin_asignar">Sin asignar</SelectItem>
-                        {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.primerNombre} {user.primerApellido}
-                            {user.idApartamento && user.idApartamento !== editingApartment?.id && (
-                              <span className="text-xs text-gray-500 ml-1">(Asignado)</span>
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const currentOwnerName = editingApartment?.user 
+                    ? `${editingApartment.user.primerNombre} ${editingApartment.user.primerApellido}`
+                    : "Sin asignar";
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Usuario Asignado</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || "sin_asignar"}
+                        key={editingApartment?.id}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={currentOwnerName} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="sin_asignar">Sin asignar</SelectItem>
+                          {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.primerNombre} {user.primerApellido}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <div className="flex space-x-3 pt-4">
