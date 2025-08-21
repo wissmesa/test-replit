@@ -1247,15 +1247,23 @@ export default function AdminDashboard() {
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-3">
                               <Avatar className="w-8 h-8">
-                                <AvatarFallback className="bg-primary text-white text-sm">
-                                  {getInitials(pago.user.primerNombre, pago.user.primerApellido)}
+                                <AvatarFallback className="bg-gray-400 text-white text-sm">
+                                  {pago.user ? 
+                                    getInitials(pago.user.primerNombre, pago.user.primerApellido) : 
+                                    "SA"
+                                  }
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="font-medium text-gray-800">
-                                  {pago.user.primerNombre} {pago.user.primerApellido}
+                                  {pago.user ? 
+                                    `${pago.user.primerNombre} ${pago.user.primerApellido}` : 
+                                    "Sin asignar"
+                                  }
                                 </p>
-                                <p className="text-sm text-gray-600">{pago.user.correo}</p>
+                                <p className="text-sm text-gray-600">
+                                  {pago.user ? pago.user.correo : "Propietario sin asignar"}
+                                </p>
                               </div>
                             </div>
                           </td>
