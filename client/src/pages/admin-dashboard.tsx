@@ -744,7 +744,7 @@ export default function AdminDashboard() {
       numero: apartment.numero,
       piso: apartment.piso,
       alicuota: apartment.alicuota,
-      idUsuario: apartment.idUsuario || "sin_asignar"
+      idUsuario: apartment.user?.id || "sin_asignar"
     });
     setShowEditApartmentDialog(true);
   };
