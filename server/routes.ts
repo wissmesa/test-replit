@@ -203,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Usuario eliminado exitosamente" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: error.message || "No se pudo eliminar el usuario" });
+      res.status(500).json({ message: (error as Error).message || "No se pudo eliminar el usuario" });
     }
   });
 
@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             idUsuario: null
           };
           
-          const apartment = await storage.createApartment(apartmentData);
+          const apartment = await storage.createApartment(apartmentData as any);
           apartments.push(apartment);
         }
       }
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Apartment deleted successfully" });
     } catch (error) {
       console.error("Error deleting apartment:", error);
-      res.status(500).json({ message: error.message || "No se pudo eliminar el apartamento" });
+      res.status(500).json({ message: (error as Error).message || "No se pudo eliminar el apartamento" });
     }
   });
 
