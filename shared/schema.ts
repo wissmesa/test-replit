@@ -148,6 +148,10 @@ export type UserWithApartment = User & {
   apartment?: Apartment;
 };
 
+export type ApartmentWithUser = Apartment & {
+  user?: User;
+};
+
 export type PagoWithRelations = Pago & {
   user: User;
   apartment: Apartment;

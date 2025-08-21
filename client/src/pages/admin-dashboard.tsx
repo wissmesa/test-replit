@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { UserWithApartment, Apartment, PagoWithRelations } from "@shared/schema";
+import type { UserWithApartment, Apartment, PagoWithRelations, ApartmentWithUser } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
   });
 
   // Fetch apartments
-  const { data: apartments } = useQuery<Apartment[]>({
+  const { data: apartments } = useQuery<ApartmentWithUser[]>({
     queryKey: ["/api/apartments"],
     enabled: !!user && user.tipoUsuario === 'admin',
   });
@@ -1901,7 +1901,7 @@ export default function AdminDashboard() {
                       </tr>
                     ) : (
                       paginatedApartments.map((apartment) => {
-                        const assignedUser = users?.find(u => u.id === apartment.idUsuario);
+                        const assignedUser = apartment.user;
                         return (
                           <tr key={apartment.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                             <td className="py-4 px-4">

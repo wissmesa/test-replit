@@ -210,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apartment routes
   app.get('/api/apartments', isAuthenticated, async (req: any, res) => {
     try {
-      const apartments = await storage.getApartments();
+      const apartments = await storage.getApartmentsWithUsers();
       res.json(apartments);
     } catch (error) {
       console.error("Error fetching apartments:", error);
