@@ -220,8 +220,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/apartments', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const apartmentData = insertApartmentSchema.parse(req.body);
-      const apartment = await storage.createApartment(apartmentData);
+      const { idUsuario, ...apartmentData } = req.body;
+      const parsedApartmentData = insertApartmentSchema.parse(apartmentData);
+      
+      // Create the apartment first
+      const apartment = await storage.createApartment(parsedApartmentData);
+      
+      // If idUsuario is provided and not "sin_asignar", assign the user to the apartment
+      if (idUsuario && idUsuario !== "sin_asignar") {
+        await storage.assignUserToApartment(apartment.id, idUsuario);
+      }
+      
       res.json(apartment);
     } catch (error) {
       console.error("Error creating apartment:", error);
