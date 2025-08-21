@@ -405,12 +405,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/pagos/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const pagoId = req.params.id;
-      const pagoData = req.body;
-      const pago = await storage.updatePago(pagoId, pagoData);
+      console.log("Updating pago with data:", req.body);
+      
+      // Import the schema from shared module
+      const { updatePagoSchema } = await import("../shared/schema");
+      const result = updatePagoSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        console.log("Validation failed:", result.error.issues);
+        return res.status(400).json({ message: "Datos inválidos", errors: result.error.issues });
+      }
+
+      const pago = await storage.updatePago(pagoId, result.data);
       res.json(pago);
     } catch (error) {
       console.error("Error updating pago:", error);
-      res.status(500).json({ message: "Failed to update pago" });
+      res.status(500).json({ message: "No se pudo actualizar el pago" });
     }
   });
 

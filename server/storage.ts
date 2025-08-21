@@ -219,7 +219,7 @@ export class DatabaseStorage implements IStorage {
     return (result as any[])[0] as Pago;
   }
 
-  async updatePago(id: string, pagoData: Partial<InsertPago>): Promise<Pago> {
+  async updatePago(id: string, pagoData: any): Promise<Pago> {
     const updateData = { ...pagoData, updatedAt: new Date() };
     const [pago] = await db
       .update(pagos)

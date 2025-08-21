@@ -126,6 +126,16 @@ export const insertPagoSchema = createInsertSchema(pagos).omit({
   fechaPago: z.string().optional().transform((val) => val ? new Date(val) : undefined),
 });
 
+export const updatePagoSchema = createInsertSchema(pagos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial().extend({
+  fechaVencimiento: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  fechaPago: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  estado: z.string().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -136,6 +146,7 @@ export type InsertApartment = z.infer<typeof insertApartmentSchema>;
 
 export type Pago = typeof pagos.$inferSelect;
 export type InsertPago = z.infer<typeof insertPagoSchema>;
+export type UpdatePago = z.infer<typeof updatePagoSchema>;
 
 // Extended types with relations
 export type UserWithApartment = User & {
