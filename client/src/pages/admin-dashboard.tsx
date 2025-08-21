@@ -1646,7 +1646,7 @@ export default function AdminDashboard() {
                               </Avatar>
                               <div>
                                 <p className="font-medium text-gray-800">
-                                  {userItem.primerNombre} {userItem.segundoNombre} {userItem.primerApellido} {userItem.segundoApellido}
+                                  {userItem.primerNombre} {userItem.primerApellido}
                                 </p>
                               </div>
                             </div>
