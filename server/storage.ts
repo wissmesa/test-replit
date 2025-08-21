@@ -245,6 +245,22 @@ export class DatabaseStorage implements IStorage {
       user: result.users,
     }));
   }
+
+  async getPagosByApartment(apartmentId: number): Promise<PagoWithRelations[]> {
+    const results = await db
+      .select()
+      .from(pagos)
+      .innerJoin(users, eq(pagos.idUsuario, users.id))
+      .innerJoin(apartments, eq(pagos.idApartamento, apartments.id))
+      .where(eq(pagos.idApartamento, apartmentId))
+      .orderBy(desc(pagos.fechaVencimiento));
+    
+    return results.map(result => ({
+      ...result.pagos,
+      user: result.users,
+      apartment: result.apartments,
+    }));
+  }
 }
 
 export const storage = new DatabaseStorage();

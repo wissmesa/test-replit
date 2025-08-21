@@ -33,7 +33,9 @@ import {
   LogOut,
   UserPlus,
   Edit,
-  Trash2
+  Trash2,
+  FileText,
+  Eye
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -119,6 +121,8 @@ export default function AdminDashboard() {
   const [showBulkPagoDialog, setShowBulkPagoDialog] = useState(false);
   const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
+  const [showHistorialDialog, setShowHistorialDialog] = useState(false);
+  const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<Apartment | null>(null);
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -249,6 +253,12 @@ export default function AdminDashboard() {
   const { data: users, isLoading: usersLoading } = useQuery<UserWithApartment[]>({
     queryKey: ["/api/users"],
     enabled: !!user && user.tipoUsuario === 'admin',
+  });
+
+  // Query for apartment payment history
+  const { data: apartmentHistory, isLoading: historyLoading } = useQuery<PagoWithRelations[]>({
+    queryKey: ["/api/pagos/apartment", selectedApartmentForHistory?.id],
+    enabled: !!selectedApartmentForHistory && !!user,
   });
 
   // Mark payment as paid mutation
@@ -716,6 +726,11 @@ export default function AdminDashboard() {
     if (window.confirm(`¿Estás seguro de que deseas eliminar el pago de ${pago.user.primerNombre} ${pago.user.primerApellido} por ${formatCurrency(pago.monto)}?`)) {
       deletePagoMutation.mutate(pago.id);
     }
+  };
+
+  const handleViewApartmentHistory = (apartment: Apartment) => {
+    setSelectedApartmentForHistory(apartment);
+    setShowHistorialDialog(true);
   };
 
   const getStatusBadge = (estado: string) => {
@@ -1655,6 +1670,15 @@ export default function AdminDashboard() {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleViewApartmentHistory(apartment)}
+                                  title="Ver historial de pagos"
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </Button>
                                 <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -2410,6 +2434,91 @@ export default function AdminDashboard() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apartment Payment History Dialog */}
+      <Dialog open={showHistorialDialog} onOpenChange={setShowHistorialDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Historial de Pagos - Apartamento {selectedApartmentForHistory?.numero}</DialogTitle>
+            <DialogDescription>
+              Historial completo de pagos del apartamento
+            </DialogDescription>
+          </DialogHeader>
+          
+          {historyLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="text-gray-600">Cargando historial...</div>
+            </div>
+          ) : apartmentHistory && apartmentHistory.length > 0 ? (
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="sticky top-0 bg-white border-b border-gray-200">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Monto</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Concepto</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Fecha Venc.</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Estado</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">Método</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apartmentHistory.map((pago) => (
+                    <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
+                            <AvatarFallback className="bg-primary text-white text-xs">
+                              {getInitials(pago.user.primerNombre, pago.user.primerApellido)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">
+                            {pago.user.primerNombre} {pago.user.primerApellido}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-gray-800">
+                          {formatCurrency(pago.monto)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-gray-800 text-sm">{pago.concepto}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-gray-800 text-sm">
+                          {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {getStatusBadge(pago.estado)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-gray-600 text-sm capitalize">
+                          {pago.metodoPago?.replace('_', ' ') || 'N/A'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No hay pagos registrados para este apartamento
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              Total de pagos: {apartmentHistory?.length || 0}
+            </div>
+            <Button onClick={() => setShowHistorialDialog(false)}>
+              Cerrar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       

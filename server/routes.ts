@@ -452,6 +452,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get payments by apartment
+  app.get('/api/pagos/apartment/:apartmentId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const apartmentId = parseInt(req.params.apartmentId);
+      if (isNaN(apartmentId)) {
+        return res.status(400).json({ message: "Invalid apartment ID" });
+      }
+
+      const pagos = await storage.getPagosByApartment(apartmentId);
+      res.json(pagos);
+    } catch (error) {
+      console.error("Error fetching apartment payments:", error);
+      res.status(500).json({ message: "Failed to fetch apartment payments" });
+    }
+  });
+
   app.post('/api/pagos', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const pagoData = insertPagoSchema.parse(req.body);
