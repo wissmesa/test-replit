@@ -283,22 +283,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get current apartment state to check if user is being unassigned
       const currentApartment = await storage.getApartment(apartmentId);
+      // Also get the user currently assigned to this apartment (if any)
+      const currentAssignedUser = await storage.getUserByApartment(apartmentId);
       const apartmentData = req.body;
       
       let apartment;
       
       // Handle user assignment changes first, then update apartment basic data
-      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "sin_asignar")) {
+      if (currentAssignedUser && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "sin_asignar")) {
         // User is being unassigned
-        const result = await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
-        await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
+        const result = await storage.unassignUserFromApartment(apartmentId, currentAssignedUser.id);
+        await storage.unassignPendingPaymentsByApartment(apartmentId, currentAssignedUser.id);
         
         // Update apartment basic data (excluding user assignment as it's already handled)
         const { idUsuario, ...basicApartmentData } = apartmentData;
         apartment = await storage.updateApartment(apartmentId, basicApartmentData);
         // Ensure the response shows the apartment as unassigned
         apartment.idUsuario = null;
-      } else if (apartmentData.idUsuario && (!currentApartment?.idUsuario || currentApartment.idUsuario !== apartmentData.idUsuario)) {
+      } else if (apartmentData.idUsuario && (!currentAssignedUser || currentAssignedUser.id !== apartmentData.idUsuario)) {
         // User is being assigned or changed - this handles uniqueness validation
         const result = await storage.assignUserToApartment(apartmentId, apartmentData.idUsuario);
         
