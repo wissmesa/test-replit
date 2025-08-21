@@ -370,26 +370,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No hay apartamentos configurados" });
       }
 
-      // Calculate payments for each apartment
-      const pagosToCreate = apartments
-        .filter((apt: any) => apt.user) // Only apartments with assigned users
-        .map((apt: any) => {
-          const aliquotaPercentage = parseFloat(apt.alicuota);
-          const montoIndividual = (parseFloat(montoTotal) * aliquotaPercentage / 100).toFixed(2);
-          
-          return {
-            idUsuario: apt.user.id,
-            idApartamento: apt.id,
-            monto: montoIndividual,
-            fechaVencimiento: new Date(fechaVencimiento),
-            concepto,
-            metodoPago: metodoPago || "sin_especificar",
-            estado: 'pendiente' as const
-          };
-        });
+      // Calculate payments for each apartment (including those without assigned users)
+      const pagosToCreate = apartments.map((apt: any) => {
+        const aliquotaPercentage = parseFloat(apt.alicuota);
+        const montoIndividual = (parseFloat(montoTotal) * aliquotaPercentage / 100).toFixed(2);
+        
+        return {
+          idUsuario: apt.user?.id || null, // Allow null for apartments without assigned users
+          idApartamento: apt.id,
+          monto: montoIndividual,
+          fechaVencimiento: new Date(fechaVencimiento),
+          concepto,
+          metodoPago: metodoPago || "sin_especificar",
+          estado: 'pendiente' as const
+        };
+      });
 
       if (pagosToCreate.length === 0) {
-        return res.status(400).json({ message: "No hay apartamentos con propietarios asignados" });
+        return res.status(400).json({ message: "No hay apartamentos disponibles para generar pagos" });
       }
 
       // Create all payments

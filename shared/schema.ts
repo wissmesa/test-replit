@@ -63,7 +63,7 @@ export const apartments: any = pgTable("apartments", {
 
 export const pagos = pgTable("pagos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  idUsuario: varchar("id_usuario").notNull().references(() => users.id),
+  idUsuario: varchar("id_usuario").references(() => users.id),
   idApartamento: integer("id_apartamento").notNull().references(() => apartments.id),
   monto: decimal("monto", { precision: 10, scale: 2 }).notNull(),
   fechaVencimiento: timestamp("fecha_vencimiento").notNull(),
