@@ -78,6 +78,23 @@ export default function TenantDashboard() {
     enabled: !!user && user.tipoUsuario === 'propietario',
   });
 
+  // Fetch latest USD exchange rate
+  const { data: usdRate } = useQuery({
+    queryKey: ["/api/tasas-cambio/latest/USD"],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/tasas-cambio/latest/USD`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch');
+        return await response.json();
+      } catch (error) {
+        return null;
+      }
+    },
+    enabled: !!user,
+  });
+
   // Profile form
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -204,8 +221,14 @@ export default function TenantDashboard() {
 
   const handlePayNow = (pago: PagoWithRelations) => {
     setSelectedPaymentForForm(pago);
-    // Set the payment amount in the form
-    paymentForm.setValue('monto', pago.monto);
+    // Clear the form first, then set default values
+    paymentForm.reset({
+      fechaOperacion: new Date().toISOString().split('T')[0],
+      cedulaRif: user?.identificacion || "",
+      monto: "",
+      tipoOperacion: "mismo_banco",
+      correoElectronico: user?.correo || "",
+    });
     setShowPaymentFormDialog(true);
   };
 
@@ -823,23 +846,36 @@ export default function TenantDashboard() {
                 <FormField
                   control={paymentForm.control}
                   name="monto"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Monto (USD)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="150.00" 
-                          {...field} 
-                          readOnly 
-                          className="bg-gray-100"
-                          data-testid="input-monto"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Calculate Bs amount for placeholder
+                    const getPlaceholderText = () => {
+                      if (selectedPaymentForForm && usdRate?.valor) {
+                        const usdAmount = parseFloat(selectedPaymentForForm.monto);
+                        const bsAmount = (usdAmount * parseFloat(usdRate.valor)).toFixed(2);
+                        return `${new Intl.NumberFormat('es-VE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        }).format(parseFloat(bsAmount))} Bs.`;
+                      }
+                      return "Monto pagado en Bs";
+                    };
+
+                    return (
+                      <FormItem>
+                        <FormLabel>Monto Pagado (Bs.)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder={getPlaceholderText()}
+                            {...field} 
+                            data-testid="input-monto"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 <FormField
