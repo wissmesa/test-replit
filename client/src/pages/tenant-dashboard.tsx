@@ -30,7 +30,8 @@ import {
   Download,
   AlertCircle,
   Eye,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
@@ -462,109 +463,249 @@ export default function TenantDashboard() {
             
             {/* Payments Tab */}
             <TabsContent value="payments" className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Historial de Pagos</h2>
-                <Select>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Todos los meses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los meses</SelectItem>
-                    <SelectItem value="2024-11">Noviembre 2024</SelectItem>
-                    <SelectItem value="2024-10">Octubre 2024</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Payment Items */}
-              <div className="space-y-4">
-                {pagosLoading ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">Cargando pagos...</p>
-                  </div>
-                ) : !pagos || pagos.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No hay pagos registrados</p>
-                  </div>
-                ) : (
-                  pagos.map((pago) => (
-                    <Card key={pago.id} className="border border-gray-200 hover:border-primary transition-colors">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                                pago.estado === 'pagado' ? 'bg-secondary bg-opacity-10' :
-                                pago.estado === 'vencido' ? 'bg-error bg-opacity-10' : 'bg-accent bg-opacity-10'
-                              }`}>
-                                {getStatusIcon(pago.estado)}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
-                                <p className="text-sm text-gray-600">
-                                  {pago.estado === 'pagado' && pago.fechaPago 
-                                    ? `Pagado el: ${new Date(pago.fechaPago).toLocaleDateString('es-ES')}`
-                                    : `Vencimiento: ${new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}`
-                                  }
-                                </p>
-                              </div>
-                            </div>
-                            <div className="mt-3 flex items-center space-x-6">
-                              <div>
-                                <p className="text-xs text-gray-500">Monto</p>
-                                <div className="space-y-1">
-                                  <p className="font-semibold text-gray-800">
-                                    {formatCurrency(pago.monto)}
-                                  </p>
-                                  {pago.montoBs && (
-                                    <p className="text-sm text-gray-600">
-                                      {new Intl.NumberFormat('es-VE', {
-                                        style: 'currency',
-                                        currency: 'VES',
-                                        minimumFractionDigits: 2
-                                      }).format(parseFloat(pago.montoBs))}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500">Estado</p>
-                                {getStatusBadge(pago.estado)}
-                              </div>
-                            </div>
+              {pagosLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Cargando pagos...</p>
+                </div>
+              ) : !pagos || pagos.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No hay pagos registrados</p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Pagos Pendientes */}
+                  {(() => {
+                    const pagosPendientes = pagos.filter(p => p.estado === 'pendiente' || p.estado === 'vencido');
+                    return pagosPendientes.length > 0 && (
+                      <div>
+                        <div className="flex items-center mb-4">
+                          <div className="bg-orange-100 p-2 rounded-lg mr-3">
+                            <Clock className="w-5 h-5 text-orange-600" />
                           </div>
-                          <div className="flex space-x-2">
-                            {pago.estado === 'pendiente' && (
-                              <Button 
-                                className="bg-primary text-white hover:bg-blue-700"
-                                onClick={() => handlePayNow(pago)}
-                                disabled={submitPaymentFormMutation.isPending}
-                              >
-                                {submitPaymentFormMutation.isPending ? "Procesando..." : "Pagar Ahora"}
-                              </Button>
-                            )}
-                            {pago.estado === 'pagado' && pago.comprobanteUrl && (
-                              <Button 
-                                variant="outline"
-                                onClick={() => window.open(pago.comprobanteUrl!, '_blank')}
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Recibo
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline"
-                              onClick={() => handleShowDetails(pago)}
-                            >
-                              Detalles
-                            </Button>
-                          </div>
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Pagos Pendientes 
+                            <span className="ml-2 bg-orange-100 text-orange-800 text-sm px-2 py-1 rounded-full">
+                              {pagosPendientes.length}
+                            </span>
+                          </h3>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
+                        <div className="space-y-3">
+                          {pagosPendientes.map((pago) => (
+                            <Card key={pago.id} className="border border-orange-200 hover:border-orange-300 transition-colors">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3">
+                                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                        pago.estado === 'vencido' ? 'bg-red-100' : 'bg-orange-100'
+                                      }`}>
+                                        {getStatusIcon(pago.estado)}
+                                      </div>
+                                      <div>
+                                        <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
+                                        <p className="text-sm text-gray-600">
+                                          Vencimiento: {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center space-x-6">
+                                      <div>
+                                        <p className="text-xs text-gray-500">Monto</p>
+                                        <p className="font-semibold text-gray-800">
+                                          {formatCurrency(pago.monto)}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Estado</p>
+                                        {getStatusBadge(pago.estado)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button 
+                                      className="bg-primary text-white hover:bg-blue-700"
+                                      onClick={() => handlePayNow(pago)}
+                                      disabled={submitPaymentFormMutation.isPending}
+                                    >
+                                      {submitPaymentFormMutation.isPending ? "Procesando..." : "Pagar Ahora"}
+                                    </Button>
+                                    <Button 
+                                      variant="outline"
+                                      onClick={() => handleShowDetails(pago)}
+                                    >
+                                      Detalles
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pagos En Revisión */}
+                  {(() => {
+                    const pagosEnRevision = pagos.filter(p => p.estado === 'en_revision');
+                    return pagosEnRevision.length > 0 && (
+                      <div>
+                        <div className="flex items-center mb-4">
+                          <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                            <Eye className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Pagos En Revisión
+                            <span className="ml-2 bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+                              {pagosEnRevision.length}
+                            </span>
+                          </h3>
+                        </div>
+                        <div className="space-y-3">
+                          {pagosEnRevision.map((pago) => (
+                            <Card key={pago.id} className="border border-blue-200 hover:border-blue-300 transition-colors">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-100">
+                                        {getStatusIcon(pago.estado)}
+                                      </div>
+                                      <div>
+                                        <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
+                                        <p className="text-sm text-gray-600">
+                                          {pago.fechaPago 
+                                            ? `Enviado el: ${new Date(pago.fechaPago).toLocaleDateString('es-ES')}`
+                                            : `Vencimiento: ${new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}`
+                                          }
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center space-x-6">
+                                      <div>
+                                        <p className="text-xs text-gray-500">Monto</p>
+                                        <div className="space-y-1">
+                                          <p className="font-semibold text-gray-800">
+                                            {formatCurrency(pago.monto)}
+                                          </p>
+                                          {pago.montoBs && (
+                                            <p className="text-sm text-gray-600">
+                                              {new Intl.NumberFormat('es-VE', {
+                                                style: 'currency',
+                                                currency: 'VES',
+                                                minimumFractionDigits: 2
+                                              }).format(parseFloat(pago.montoBs))}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Estado</p>
+                                        {getStatusBadge(pago.estado)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button 
+                                      variant="outline"
+                                      onClick={() => handleShowDetails(pago)}
+                                    >
+                                      Detalles
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Historial de Pagos Completados */}
+                  {(() => {
+                    const pagosPagados = pagos.filter(p => p.estado === 'pagado');
+                    return pagosPagados.length > 0 && (
+                      <div>
+                        <div className="flex items-center mb-4">
+                          <div className="bg-green-100 p-2 rounded-lg mr-3">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Historial de Pagos Completados
+                            <span className="ml-2 bg-green-100 text-green-800 text-sm px-2 py-1 rounded-full">
+                              {pagosPagados.length}
+                            </span>
+                          </h3>
+                        </div>
+                        <div className="space-y-3">
+                          {pagosPagados.map((pago) => (
+                            <Card key={pago.id} className="border border-green-200 hover:border-green-300 transition-colors">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-green-100">
+                                        {getStatusIcon(pago.estado)}
+                                      </div>
+                                      <div>
+                                        <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
+                                        <p className="text-sm text-gray-600">
+                                          Pagado el: {new Date(pago.fechaPago!).toLocaleDateString('es-ES')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center space-x-6">
+                                      <div>
+                                        <p className="text-xs text-gray-500">Monto</p>
+                                        <div className="space-y-1">
+                                          <p className="font-semibold text-gray-800">
+                                            {formatCurrency(pago.monto)}
+                                          </p>
+                                          {pago.montoBs && (
+                                            <p className="text-sm text-gray-600">
+                                              {new Intl.NumberFormat('es-VE', {
+                                                style: 'currency',
+                                                currency: 'VES',
+                                                minimumFractionDigits: 2
+                                              }).format(parseFloat(pago.montoBs))}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Estado</p>
+                                        {getStatusBadge(pago.estado)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    {pago.comprobanteUrl && (
+                                      <Button 
+                                        variant="outline"
+                                        onClick={() => window.open(pago.comprobanteUrl!, '_blank')}
+                                      >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Recibo
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant="outline"
+                                      onClick={() => handleShowDetails(pago)}
+                                    >
+                                      Detalles
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </TabsContent>
             
             {/* Profile Tab */}
