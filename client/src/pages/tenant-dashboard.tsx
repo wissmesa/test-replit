@@ -460,9 +460,20 @@ export default function TenantDashboard() {
                             <div className="mt-3 flex items-center space-x-6">
                               <div>
                                 <p className="text-xs text-gray-500">Monto</p>
-                                <p className="font-semibold text-gray-800">
-                                  {formatCurrency(pago.monto)}
-                                </p>
+                                <div className="space-y-1">
+                                  <p className="font-semibold text-gray-800">
+                                    {formatCurrency(pago.monto)}
+                                  </p>
+                                  {pago.montoBs && (
+                                    <p className="text-sm text-gray-600">
+                                      {new Intl.NumberFormat('es-VE', {
+                                        style: 'currency',
+                                        currency: 'VES',
+                                        minimumFractionDigits: 2
+                                      }).format(parseFloat(pago.montoBs))}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-500">Estado</p>

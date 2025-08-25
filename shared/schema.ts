@@ -64,7 +64,9 @@ export const pagos = pgTable("pagos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUsuario: varchar("id_usuario").references(() => users.id),
   idApartamento: integer("id_apartamento").notNull().references(() => apartments.id),
-  monto: decimal("monto", { precision: 10, scale: 2 }).notNull(),
+  monto: decimal("monto", { precision: 10, scale: 2 }).notNull(), // Monto en USD
+  montoBs: decimal("monto_bs", { precision: 15, scale: 2 }), // Monto equivalente en Bolívares
+  tasaCambio: decimal("tasa_cambio", { precision: 15, scale: 8 }), // Tasa usada para la conversión
   fechaVencimiento: timestamp("fecha_vencimiento").notNull(),
   fechaPago: timestamp("fecha_pago"),
   estado: varchar("estado").notNull().$type<'pendiente' | 'pagado' | 'vencido' | 'en_revision'>().default('pendiente'),

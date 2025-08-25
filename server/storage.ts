@@ -53,6 +53,7 @@ export interface IStorage {
   getLatestTasaCambio(moneda: string): Promise<TasaCambio | undefined>;
   createTasaCambio(tasa: InsertTasaCambio): Promise<TasaCambio>;
   getTasasCambioByDateRange(fechaInicio: Date, fechaFin: Date, moneda?: string): Promise<TasaCambio[]>;
+  getUSDExchangeRate(fecha?: Date): Promise<{ valor: string, fecha: Date } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -295,10 +296,32 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getUSDExchangeRate(fecha?: Date): Promise<{ valor: string, fecha: Date } | null> {
+    // Simply get the most recent USD rate
+    const result = await db
+      .select()
+      .from(tasasCambio)
+      .where(eq(tasasCambio.moneda, 'USD'))
+      .orderBy(desc(tasasCambio.fecha))
+      .limit(1);
+    
+    return result.length > 0 ? { valor: result[0].valor, fecha: result[0].fecha } : null;
+  }
+
   async createPago(pagoData: InsertPago): Promise<Pago> {
+    // Get USD exchange rate for conversion
+    const exchangeRate = await this.getUSDExchangeRate();
+    
+    // Prepare payment data with Bs conversion
+    const finalPaymentData = {
+      ...pagoData,
+      montoBs: exchangeRate ? (parseFloat(pagoData.monto) * parseFloat(exchangeRate.valor)).toFixed(2) : null,
+      tasaCambio: exchangeRate?.valor || null
+    };
+
     const result = await db
       .insert(pagos)
-      .values(pagoData as any)
+      .values(finalPaymentData as any)
       .returning();
     return (result as any[])[0] as Pago;
   }
