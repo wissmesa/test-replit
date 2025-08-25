@@ -49,21 +49,34 @@ export default function ExchangeRatesPage() {
   }, [user, authLoading, setLocation]);
 
   // Get exchange rates
-  const { data: tasas, isLoading: tasasLoading } = useQuery<TasaCambio[]>({
+  const { data: tasas, isLoading: tasasLoading } = useQuery({
     queryKey: ["/api/tasas-cambio", selectedMoneda, limite],
-    queryFn: () => apiRequest('GET', `/api/tasas-cambio?moneda=${selectedMoneda}&limite=${limite}`),
+    queryFn: async () => {
+      console.log('Fetching tasas with:', { selectedMoneda, limite });
+      const response = await fetch(`/api/tasas-cambio?moneda=${selectedMoneda}&limite=${limite}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      const result = await response.json();
+      console.log('Tasas result:', result);
+      return result;
+    },
     enabled: !!user,
   });
 
   // Get latest rates for all currencies
-  const { data: latestRates } = useQuery<any[]>({
+  const { data: latestRates } = useQuery({
     queryKey: ["/api/tasas-cambio", "latest"],
     queryFn: async () => {
       const rates = await Promise.all(
         MONEDAS.map(async (moneda) => {
           try {
-            const response = await apiRequest('GET', `/api/tasas-cambio/latest/${moneda.codigo}`) as TasaCambio;
-            return { ...response, moneda: moneda.codigo, nombre: moneda.nombre, simbolo: moneda.simbolo };
+            const response = await fetch(`/api/tasas-cambio/latest/${moneda.codigo}`, {
+              credentials: 'include'
+            });
+            if (!response.ok) throw new Error('Failed to fetch');
+            const data = await response.json();
+            return { ...data, moneda: moneda.codigo, nombre: moneda.nombre, simbolo: moneda.simbolo };
           } catch (error) {
             return null;
           }
@@ -77,7 +90,14 @@ export default function ExchangeRatesPage() {
   // Sync exchange rates mutation (admin only)
   const syncRatesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('POST', '/api/tasas-cambio/sync', {});
+      const response = await fetch('/api/tasas-cambio/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error('Failed to sync');
+      return await response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasas-cambio"] });
@@ -108,7 +128,10 @@ export default function ExchangeRatesPage() {
 
   const handleLogout = async () => {
     try {
-      await apiRequest('POST', '/api/auth/logout', {});
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
       queryClient.clear();
       window.location.href = "/";
     } catch (error) {
@@ -175,7 +198,7 @@ export default function ExchangeRatesPage() {
     return null;
   }
 
-  const trend = getTrend(tasas);
+  const trend = getTrend(tasas as TasaCambio[]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -351,7 +374,7 @@ export default function ExchangeRatesPage() {
                 <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
                 <span className="ml-2 text-gray-600">Cargando historial...</span>
               </div>
-            ) : tasas && tasas.length > 0 ? (
+            ) : tasas && Array.isArray(tasas) && tasas.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -364,8 +387,8 @@ export default function ExchangeRatesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tasas.map((tasa: TasaCambio, index: number) => {
-                      const prevTasa = tasas[index + 1];
+                    {(tasas as TasaCambio[]).map((tasa: TasaCambio, index: number) => {
+                      const prevTasa = (tasas as TasaCambio[])[index + 1];
                       let change = null;
                       
                       if (prevTasa && tasa && prevTasa.valor && tasa.valor) {
