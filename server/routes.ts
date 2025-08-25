@@ -606,6 +606,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark payment as in review (propietarios can mark their own payments)
+  app.put('/api/pagos/:id/mark-review', isAuthenticated, async (req: any, res) => {
+    try {
+      const pagoId = req.params.id;
+      const userId = req.user.id;
+      
+      // Get the payment to verify ownership
+      const pago = await storage.getPago(pagoId);
+      if (!pago) {
+        return res.status(404).json({ message: "Pago no encontrado" });
+      }
+      
+      // Only allow if the payment belongs to the current user or if user is admin
+      if (pago.idUsuario !== userId && req.user.tipoUsuario !== 'admin') {
+        return res.status(403).json({ message: "No autorizado para modificar este pago" });
+      }
+      
+      // Only allow marking as in review if payment is currently pending
+      if (pago.estado !== 'pendiente') {
+        return res.status(400).json({ message: "Solo se pueden marcar pagos pendientes para revisión" });
+      }
+      
+      const updatedPago = await storage.updatePago(pagoId, {
+        estado: 'en_revision',
+        fechaPago: new Date().toISOString()
+      });
+      
+      res.json(updatedPago);
+    } catch (error) {
+      console.error("Error marking pago for review:", error);
+      res.status(500).json({ message: "No se pudo marcar el pago para revisión" });
+    }
+  });
+
   app.delete('/api/pagos/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const pagoId = req.params.id;

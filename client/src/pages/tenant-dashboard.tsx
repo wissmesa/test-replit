@@ -141,10 +141,7 @@ export default function TenantDashboard() {
   // Mark payment as in review mutation
   const markAsInReviewMutation = useMutation({
     mutationFn: async (pagoId: string) => {
-      await apiRequest('PUT', `/api/pagos/${pagoId}`, {
-        estado: 'en_revision',
-        fechaPago: new Date().toISOString(),
-      });
+      await apiRequest('PUT', `/api/pagos/${pagoId}/mark-review`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
@@ -482,7 +479,7 @@ export default function TenantDashboard() {
                             {pago.estado === 'pagado' && pago.comprobanteUrl && (
                               <Button 
                                 variant="outline"
-                                onClick={() => window.open(pago.comprobanteUrl, '_blank')}
+                                onClick={() => window.open(pago.comprobanteUrl!, '_blank')}
                               >
                                 <Download className="w-4 h-4 mr-2" />
                                 Recibo
@@ -712,7 +709,7 @@ export default function TenantDashboard() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => window.open(selectedPaymentDetails.comprobanteUrl, '_blank')}
+                    onClick={() => window.open(selectedPaymentDetails.comprobanteUrl!, '_blank')}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Ver Comprobante
