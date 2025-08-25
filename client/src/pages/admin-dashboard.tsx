@@ -1247,7 +1247,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
-                              {pago.estado === 'pendiente' && (
+                              {(pago.estado === 'pendiente' || pago.estado === 'en_revision') && (
                                 <Button
                                   size="sm"
                                   className="bg-secondary text-white hover:bg-green-600"
