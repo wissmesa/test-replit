@@ -1210,6 +1210,12 @@ export default function TenantDashboard() {
           </DialogContent>
         </Dialog>
       )}
+      
+      {/* Debug Message */}
+      <div className="mt-8 text-center text-gray-500 text-sm">
+        <p>404 Page Not Found</p>
+        <p>Did you forget to add the page to the router</p>
+      </div>
     </div>
   );
 }
