@@ -2365,12 +2365,6 @@ export default function AdminDashboard() {
                           <SelectItem value="sin_especificar">Sin especificar</SelectItem>
                           <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="zelle">Zelle</SelectItem>
-                          <SelectItem value="paypal">PayPal</SelectItem>
-                          <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
-                          <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
-                          <SelectItem value="binance">Binance Pay</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -2494,12 +2488,6 @@ export default function AdminDashboard() {
                           <SelectItem value="sin_especificar">Sin especificar</SelectItem>
                           <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="zelle">Zelle</SelectItem>
-                          <SelectItem value="paypal">PayPal</SelectItem>
-                          <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
-                          <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
-                          <SelectItem value="binance">Binance Pay</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
