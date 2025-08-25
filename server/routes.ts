@@ -607,6 +607,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark payment as in review (propietarios can mark their own payments)
+  // Submit payment with form data
+  app.put('/api/pagos/:id/submit-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const pagoId = req.params.id;
+      const userId = req.session.userId;
+      const userType = req.session.userType;
+      
+      // Validate payment form data
+      const { fechaOperacion, cedulaRif, monto, tipoOperacion, correoElectronico } = req.body;
+      
+      if (!fechaOperacion || !cedulaRif || !monto || !tipoOperacion || !correoElectronico) {
+        return res.status(400).json({ message: "Todos los campos son requeridos" });
+      }
+      
+      // Get the payment to verify ownership
+      const pago = await storage.getPago(pagoId);
+      if (!pago) {
+        return res.status(404).json({ message: "Pago no encontrado" });
+      }
+      
+      // Only allow if the payment belongs to the current user or if user is admin
+      if (pago.idUsuario !== userId && userType !== 'admin') {
+        return res.status(403).json({ message: "No autorizado para modificar este pago" });
+      }
+      
+      // Only allow submitting if payment is currently pending
+      if (pago.estado !== 'pendiente') {
+        return res.status(400).json({ message: "Solo se pueden procesar pagos pendientes" });
+      }
+      
+      const updatedPago = await storage.updatePago(pagoId, {
+        estado: 'en_revision',
+        fechaPago: new Date(),
+        fechaOperacion: new Date(fechaOperacion),
+        cedulaRif,
+        tipoOperacion,
+        correoElectronico
+      });
+      
+      res.json(updatedPago);
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      res.status(500).json({ message: "No se pudo procesar el pago" });
+    }
+  });
+
   app.put('/api/pagos/:id/mark-review', isAuthenticated, async (req: any, res) => {
     try {
       const pagoId = req.params.id;

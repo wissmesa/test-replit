@@ -73,6 +73,11 @@ export const pagos = pgTable("pagos", {
   metodoPago: varchar("metodo_pago"),
   concepto: varchar("concepto").notNull(),
   comprobanteUrl: varchar("comprobante_url"), // URL del comprobante de pago subido
+  // Nuevos campos para el formulario de pago
+  fechaOperacion: timestamp("fecha_operacion"),
+  cedulaRif: varchar("cedula_rif"),
+  tipoOperacion: varchar("tipo_operacion").$type<'mismo_banco' | 'otro_banco'>(),
+  correoElectronico: varchar("correo_electronico"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -132,6 +137,17 @@ export const insertPagoSchema = createInsertSchema(pagos).omit({
   fechaPago: z.string().optional().transform((val) => val ? new Date(val) : undefined),
 });
 
+// Esquema para el formulario de pago del propietario
+export const paymentFormSchema = z.object({
+  fechaOperacion: z.string().min(1, "Fecha de operación requerida"),
+  cedulaRif: z.string().min(1, "Cédula o RIF requerido"),
+  monto: z.string().min(1, "Monto requerido"),
+  tipoOperacion: z.enum(["mismo_banco", "otro_banco"], {
+    required_error: "Debe seleccionar el tipo de operación"
+  }),
+  correoElectronico: z.string().email("Email inválido").min(1, "Email requerido")
+});
+
 export const updatePagoSchema = createInsertSchema(pagos).omit({
   id: true,
   createdAt: true,
@@ -160,6 +176,7 @@ export type InsertApartment = z.infer<typeof insertApartmentSchema>;
 export type Pago = typeof pagos.$inferSelect;
 export type InsertPago = z.infer<typeof insertPagoSchema>;
 export type UpdatePago = z.infer<typeof updatePagoSchema>;
+export type PaymentFormData = z.infer<typeof paymentFormSchema>;
 
 export type TasaCambio = typeof tasasCambio.$inferSelect;
 export type InsertTasaCambio = z.infer<typeof insertTasaCambioSchema>;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import type { UserWithApartment, PagoWithRelations } from "@shared/schema";
+import type { UserWithApartment, PagoWithRelations, PaymentFormData } from "@shared/schema";
+import { paymentFormSchema } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,6 +54,8 @@ export default function TenantDashboard() {
   const [activeTab, setActiveTab] = useState("payments");
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<PagoWithRelations | null>(null);
   const [showPaymentDetailsDialog, setShowPaymentDetailsDialog] = useState(false);
+  const [showPaymentFormDialog, setShowPaymentFormDialog] = useState(false);
+  const [selectedPaymentForForm, setSelectedPaymentForForm] = useState<PagoWithRelations | null>(null);
 
   // Redirect if not authenticated or not tenant
   useEffect(() => {
@@ -106,6 +109,18 @@ export default function TenantDashboard() {
     }
   }, [user, form]);
 
+  // Payment form configuration
+  const paymentForm = useForm<PaymentFormData>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      fechaOperacion: new Date().toISOString().split('T')[0],
+      cedulaRif: user?.identificacion || "",
+      monto: "",
+      tipoOperacion: "mismo_banco",
+      correoElectronico: user?.correo || "",
+    },
+  });
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
@@ -139,13 +154,16 @@ export default function TenantDashboard() {
     },
   });
 
-  // Mark payment as in review mutation
-  const markAsInReviewMutation = useMutation({
-    mutationFn: async (pagoId: string) => {
-      await apiRequest('PUT', `/api/pagos/${pagoId}/mark-review`, {});
+  // Submit payment form mutation
+  const submitPaymentFormMutation = useMutation({
+    mutationFn: async ({ pagoId, data }: { pagoId: string; data: PaymentFormData }) => {
+      await apiRequest('PUT', `/api/pagos/${pagoId}/submit-payment`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      setShowPaymentFormDialog(false);
+      setSelectedPaymentForForm(null);
+      paymentForm.reset();
       toast({
         title: "Éxito",
         description: "Pago enviado para revisión del administrador",
@@ -165,7 +183,7 @@ export default function TenantDashboard() {
       }
       toast({
         title: "Error",
-        description: "No se pudo actualizar el pago",
+        description: "No se pudo procesar el pago",
         variant: "destructive",
       });
     },
@@ -185,7 +203,18 @@ export default function TenantDashboard() {
   };
 
   const handlePayNow = (pago: PagoWithRelations) => {
-    markAsInReviewMutation.mutate(pago.id);
+    setSelectedPaymentForForm(pago);
+    // Set the payment amount in the form
+    paymentForm.setValue('monto', pago.monto);
+    setShowPaymentFormDialog(true);
+  };
+
+  const onSubmitPaymentForm = (data: PaymentFormData) => {
+    if (!selectedPaymentForForm) return;
+    submitPaymentFormMutation.mutate({ 
+      pagoId: selectedPaymentForForm.id, 
+      data 
+    });
   };
 
   const handleShowDetails = (pago: PagoWithRelations) => {
@@ -492,9 +521,9 @@ export default function TenantDashboard() {
                               <Button 
                                 className="bg-primary text-white hover:bg-blue-700"
                                 onClick={() => handlePayNow(pago)}
-                                disabled={markAsInReviewMutation.isPending}
+                                disabled={submitPaymentFormMutation.isPending}
                               >
-                                {markAsInReviewMutation.isPending ? "Procesando..." : "Pagar Ahora"}
+                                {submitPaymentFormMutation.isPending ? "Procesando..." : "Pagar Ahora"}
                               </Button>
                             )}
                             {pago.estado === 'pagado' && pago.comprobanteUrl && (
@@ -743,6 +772,136 @@ export default function TenantDashboard() {
                 Cerrar
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Payment Form Dialog */}
+      {selectedPaymentForForm && (
+        <Dialog open={showPaymentFormDialog} onOpenChange={setShowPaymentFormDialog}>
+          <DialogContent className="max-w-md" aria-describedby="payment-form-description">
+            <DialogHeader>
+              <DialogTitle>Completar Pago</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mb-4" id="payment-form-description">
+              <div className="p-3 bg-gray-50 rounded-md">
+                <p className="text-sm text-gray-600">Concepto: <span className="font-medium">{selectedPaymentForForm.concepto}</span></p>
+                <p className="text-sm text-gray-600">Monto: <span className="font-medium text-green-600">{formatCurrency(selectedPaymentForForm.monto)}</span></p>
+              </div>
+            </div>
+            
+            <Form {...paymentForm}>
+              <form onSubmit={paymentForm.handleSubmit(onSubmitPaymentForm)} className="space-y-4">
+                <FormField
+                  control={paymentForm.control}
+                  name="fechaOperacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha de Operación</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} data-testid="input-fecha-operacion" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={paymentForm.control}
+                  name="cedulaRif"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cédula - RIF</FormLabel>
+                      <FormControl>
+                        <Input placeholder="V-12345678 o J-123456789" {...field} data-testid="input-cedula-rif" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={paymentForm.control}
+                  name="monto"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monto (USD)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="150.00" 
+                          {...field} 
+                          readOnly 
+                          className="bg-gray-100"
+                          data-testid="input-monto"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={paymentForm.control}
+                  name="tipoOperacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Operación</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value} data-testid="select-tipo-operacion">
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mismo_banco">Transferencia mismo banco</SelectItem>
+                            <SelectItem value="otro_banco">Transferencia desde otro banco</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={paymentForm.control}
+                  name="correoElectronico"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email" 
+                          placeholder="usuario@ejemplo.com" 
+                          {...field} 
+                          data-testid="input-correo-electronico"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowPaymentFormDialog(false)}
+                    data-testid="button-cancelar"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={submitPaymentFormMutation.isPending}
+                    data-testid="button-enviar-pago"
+                  >
+                    {submitPaymentFormMutation.isPending ? "Procesando..." : "Enviar Pago"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       )}
