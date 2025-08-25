@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Building, 
   CreditCard, 
@@ -49,6 +50,8 @@ export default function TenantDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("payments");
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<PagoWithRelations | null>(null);
+  const [showPaymentDetailsDialog, setShowPaymentDetailsDialog] = useState(false);
 
   // Redirect if not authenticated or not tenant
   useEffect(() => {
@@ -135,6 +138,41 @@ export default function TenantDashboard() {
     },
   });
 
+  // Mark payment as in review mutation
+  const markAsInReviewMutation = useMutation({
+    mutationFn: async (pagoId: string) => {
+      await apiRequest('PUT', `/api/pagos/${pagoId}`, {
+        estado: 'en_revision',
+        fechaPago: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      toast({
+        title: "Éxito",
+        description: "Pago enviado para revisión del administrador",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout', {});
@@ -146,6 +184,15 @@ export default function TenantDashboard() {
       // Force redirect even if logout fails
       window.location.href = "/";
     }
+  };
+
+  const handlePayNow = (pago: PagoWithRelations) => {
+    markAsInReviewMutation.mutate(pago.id);
+  };
+
+  const handleShowDetails = (pago: PagoWithRelations) => {
+    setSelectedPaymentDetails(pago);
+    setShowPaymentDetailsDialog(true);
   };
 
   const getStatusBadge = (estado: string) => {
@@ -424,17 +471,27 @@ export default function TenantDashboard() {
                           </div>
                           <div className="flex space-x-2">
                             {pago.estado === 'pendiente' && (
-                              <Button className="bg-primary text-white hover:bg-blue-700">
-                                Pagar Ahora
+                              <Button 
+                                className="bg-primary text-white hover:bg-blue-700"
+                                onClick={() => handlePayNow(pago)}
+                                disabled={markAsInReviewMutation.isPending}
+                              >
+                                {markAsInReviewMutation.isPending ? "Procesando..." : "Pagar Ahora"}
                               </Button>
                             )}
-                            {pago.estado === 'pagado' && (
-                              <Button variant="outline">
+                            {pago.estado === 'pagado' && pago.comprobanteUrl && (
+                              <Button 
+                                variant="outline"
+                                onClick={() => window.open(pago.comprobanteUrl, '_blank')}
+                              >
                                 <Download className="w-4 h-4 mr-2" />
                                 Recibo
                               </Button>
                             )}
-                            <Button variant="outline">
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleShowDetails(pago)}
+                            >
                               Detalles
                             </Button>
                           </div>
@@ -602,6 +659,75 @@ export default function TenantDashboard() {
         isOpen={updateProfileMutation.isPending} 
         message="Actualizando perfil..." 
       />
+
+      {/* Payment Details Dialog */}
+      {selectedPaymentDetails && (
+        <Dialog open={showPaymentDetailsDialog} onOpenChange={setShowPaymentDetailsDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Detalles del Pago</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Concepto</p>
+                <p className="text-lg font-semibold">{selectedPaymentDetails.concepto}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Monto</p>
+                  <p className="text-lg font-semibold">{formatCurrency(selectedPaymentDetails.monto)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Estado</p>
+                  {getStatusBadge(selectedPaymentDetails.estado)}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Fecha de Vencimiento</p>
+                  <p className="text-sm">{new Date(selectedPaymentDetails.fechaVencimiento).toLocaleDateString('es-ES')}</p>
+                </div>
+                {selectedPaymentDetails.fechaPago && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Fecha de Pago</p>
+                    <p className="text-sm">{new Date(selectedPaymentDetails.fechaPago).toLocaleDateString('es-ES')}</p>
+                  </div>
+                )}
+              </div>
+              {selectedPaymentDetails.metodoPago && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Método de Pago</p>
+                  <p className="text-sm">{selectedPaymentDetails.metodoPago}</p>
+                </div>
+              )}
+              {selectedPaymentDetails.apartment && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Apartamento</p>
+                  <p className="text-sm">Apt. {selectedPaymentDetails.apartment.numero} - Piso {selectedPaymentDetails.apartment.piso}</p>
+                </div>
+              )}
+              {selectedPaymentDetails.comprobanteUrl && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Comprobante</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.open(selectedPaymentDetails.comprobanteUrl, '_blank')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Ver Comprobante
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button variant="outline" onClick={() => setShowPaymentDetailsDialog(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
