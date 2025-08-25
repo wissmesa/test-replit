@@ -631,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedPago = await storage.updatePago(pagoId, {
         estado: 'en_revision',
-        fechaPago: new Date().toISOString()
+        fechaPago: new Date()
       });
       
       res.json(updatedPago);
