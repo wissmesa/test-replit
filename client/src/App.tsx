@@ -45,7 +45,7 @@ function Router() {
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/tenant" component={TenantDashboard} />
           <Route path="/tasas-cambio" component={ExchangeRatesPage} />
-          <Route component={NotFound} />
+        {/* <Route component={NotFound} /> */}
         </>
       )}
     </Switch>
