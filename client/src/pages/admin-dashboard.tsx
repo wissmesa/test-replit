@@ -1149,6 +1149,7 @@ export default function AdminDashboard() {
                     <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="pagado">Pagado</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="en_revision">En Revisión</SelectItem>
                     <SelectItem value="vencido">Vencido</SelectItem>
                   </SelectContent>
                 </Select>
