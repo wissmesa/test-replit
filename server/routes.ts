@@ -637,16 +637,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Solo se pueden procesar pagos pendientes" });
       }
       
-      const updatedPago = await storage.updatePago(pagoId, {
-        estado: 'en_revision',
-        fechaPago: new Date(),
-        fechaOperacion: new Date(fechaOperacion),
-        cedulaRif,
-        tipoOperacion,
-        correoElectronico
-      });
+      // Get current USD exchange rate to convert Bs amount to USD
+      const usdRate = await storage.getUSDExchangeRate();
+      if (!usdRate) {
+        return res.status(400).json({ message: "No se pudo obtener la tasa de cambio USD" });
+      }
       
-      res.json(updatedPago);
+      // Convert the paid amount (in Bs) to USD
+      const paidAmountBs = parseFloat(monto);
+      const exchangeRate = parseFloat(usdRate.valor);
+      const paidAmountUsd = paidAmountBs / exchangeRate;
+      const originalAmountUsd = parseFloat(pago.monto);
+      
+      // Check if this is a partial payment
+      const tolerance = 0.01; // $0.01 tolerance for rounding differences
+      if (paidAmountUsd < originalAmountUsd - tolerance) {
+        // Partial payment - calculate the remaining amount
+        const remainingAmountUsd = originalAmountUsd - paidAmountUsd;
+        
+        // Update current payment as paid with actual amount
+        const updatedPago = await storage.updatePago(pagoId, {
+          estado: 'en_revision',
+          fechaPago: new Date(),
+          fechaOperacion: new Date(fechaOperacion),
+          cedulaRif,
+          tipoOperacion,
+          correoElectronico,
+          monto: paidAmountUsd.toFixed(2) // Update with actual paid amount in USD
+        });
+        
+        // Create new payment for the remaining amount
+        const newPaymentData = {
+          idUsuario: pago.idUsuario,
+          idApartamento: pago.idApartamento,
+          monto: remainingAmountUsd.toFixed(2),
+          fechaVencimiento: pago.fechaVencimiento,
+          concepto: `${pago.concepto} - Saldo pendiente`,
+          estado: 'pendiente' as const
+        };
+        
+        await storage.createPago(newPaymentData);
+        
+        res.json({ 
+          ...updatedPago, 
+          remainingAmount: remainingAmountUsd.toFixed(2),
+          message: "Pago parcial procesado. Se creó un nuevo pago por el saldo restante."
+        });
+      } else {
+        // Full payment or overpayment
+        const updatedPago = await storage.updatePago(pagoId, {
+          estado: 'en_revision',
+          fechaPago: new Date(),
+          fechaOperacion: new Date(fechaOperacion),
+          cedulaRif,
+          tipoOperacion,
+          correoElectronico
+        });
+        
+        res.json(updatedPago);
+      }
     } catch (error) {
       console.error("Error submitting payment:", error);
       res.status(500).json({ message: "No se pudo procesar el pago" });
