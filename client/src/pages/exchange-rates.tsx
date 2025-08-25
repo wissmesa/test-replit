@@ -247,10 +247,10 @@ export default function ExchangeRatesPage() {
                     {rate ? (
                       <>
                         <p className="text-2xl font-bold text-gray-900">
-                          {formatCurrency(rate.valor, 'Bs.')}
+                          {rate.valor ? formatCurrency(rate.valor, 'Bs.') : 'Sin datos'}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(rate.fecha.toString())}
+                          {rate.fecha ? formatDate(rate.fecha.toString()) : 'Sin fecha'}
                         </p>
                       </>
                     ) : (
@@ -384,7 +384,7 @@ export default function ExchangeRatesPage() {
                             <div className="flex items-center space-x-2">
                               <Calendar className="w-4 h-4 text-gray-400" />
                               <span className="text-gray-800">
-                                {formatDate(tasa.fecha.toString())}
+                                {tasa.fecha ? formatDate(tasa.fecha.toString()) : 'Sin fecha'}
                               </span>
                             </div>
                           </td>
@@ -395,7 +395,7 @@ export default function ExchangeRatesPage() {
                           </td>
                           <td className="py-4 px-4 text-right">
                             <span className="text-lg font-semibold text-gray-900">
-                              {formatCurrency(tasa.valor, 'Bs.')}
+                              {tasa.valor ? formatCurrency(tasa.valor, 'Bs.') : 'Sin datos'}
                             </span>
                           </td>
                           <td className="py-4 px-4 text-center">
