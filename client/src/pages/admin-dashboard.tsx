@@ -2265,7 +2265,14 @@ export default function AdminDashboard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Usuario</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value);
+                        // Auto-select apartment when user is selected
+                        const selectedUser = users?.find(u => u.id === value);
+                        if (selectedUser?.idApartamento) {
+                          pagoForm.setValue('idApartamento', selectedUser.idApartamento);
+                        }
+                      }} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona usuario" />
@@ -2275,6 +2282,9 @@ export default function AdminDashboard() {
                           {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.primerNombre} {user.primerApellido}
+                              {user.idApartamento && apartments?.find(apt => apt.id === user.idApartamento) && 
+                                ` - Apt. ${apartments.find(apt => apt.id === user.idApartamento)?.numero}`
+                              }
                             </SelectItem>
                           ))}
                         </SelectContent>
