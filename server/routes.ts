@@ -610,7 +610,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/pagos/:id/mark-review', isAuthenticated, async (req: any, res) => {
     try {
       const pagoId = req.params.id;
-      const userId = req.user.id;
+      const userId = req.session.userId;
+      const userType = req.session.userType;
       
       // Get the payment to verify ownership
       const pago = await storage.getPago(pagoId);
@@ -619,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only allow if the payment belongs to the current user or if user is admin
-      if (pago.idUsuario !== userId && req.user.tipoUsuario !== 'admin') {
+      if (pago.idUsuario !== userId && userType !== 'admin') {
         return res.status(403).json({ message: "No autorizado para modificar este pago" });
       }
       

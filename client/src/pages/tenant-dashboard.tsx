@@ -660,11 +660,11 @@ export default function TenantDashboard() {
       {/* Payment Details Dialog */}
       {selectedPaymentDetails && (
         <Dialog open={showPaymentDetailsDialog} onOpenChange={setShowPaymentDetailsDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md" aria-describedby="payment-details-description">
             <DialogHeader>
               <DialogTitle>Detalles del Pago</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4" id="payment-details-description">
               <div>
                 <p className="text-sm font-medium text-gray-500">Concepto</p>
                 <p className="text-lg font-semibold">{selectedPaymentDetails.concepto}</p>
