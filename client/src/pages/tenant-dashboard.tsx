@@ -31,7 +31,9 @@ import {
   AlertCircle,
   Eye,
   TrendingUp,
-  Clock
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
@@ -57,6 +59,8 @@ export default function TenantDashboard() {
   const [showPaymentDetailsDialog, setShowPaymentDetailsDialog] = useState(false);
   const [showPaymentFormDialog, setShowPaymentFormDialog] = useState(false);
   const [selectedPaymentForForm, setSelectedPaymentForForm] = useState<PagoWithRelations | null>(null);
+  const [currentHistoryPage, setCurrentHistoryPage] = useState(1);
+  const HISTORY_ITEMS_PER_PAGE = 5;
 
   // Redirect if not authenticated or not tenant
   useEffect(() => {
@@ -625,21 +629,36 @@ export default function TenantDashboard() {
                   {/* Historial de Pagos Completados */}
                   {(() => {
                     const pagosPagados = pagos.filter(p => p.estado === 'pagado');
-                    return pagosPagados.length > 0 && (
+                    if (pagosPagados.length === 0) return null;
+
+                    // Calcular paginación
+                    const totalPages = Math.ceil(pagosPagados.length / HISTORY_ITEMS_PER_PAGE);
+                    const startIndex = (currentHistoryPage - 1) * HISTORY_ITEMS_PER_PAGE;
+                    const endIndex = startIndex + HISTORY_ITEMS_PER_PAGE;
+                    const currentPagePayments = pagosPagados.slice(startIndex, endIndex);
+
+                    return (
                       <div>
-                        <div className="flex items-center mb-4">
-                          <div className="bg-green-100 p-2 rounded-lg mr-3">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <div className="bg-green-100 p-2 rounded-lg mr-3">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800">
+                              Historial de Pagos Completados
+                              <span className="ml-2 bg-green-100 text-green-800 text-sm px-2 py-1 rounded-full">
+                                {pagosPagados.length}
+                              </span>
+                            </h3>
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            Historial de Pagos Completados
-                            <span className="ml-2 bg-green-100 text-green-800 text-sm px-2 py-1 rounded-full">
-                              {pagosPagados.length}
-                            </span>
-                          </h3>
+                          {totalPages > 1 && (
+                            <div className="text-sm text-gray-600">
+                              Página {currentHistoryPage} de {totalPages}
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-3">
-                          {pagosPagados.map((pago) => (
+                          {currentPagePayments.map((pago) => (
                             <Card key={pago.id} className="border border-green-200 hover:border-green-300 transition-colors">
                               <CardContent className="p-4">
                                 <div className="flex justify-between items-start">
@@ -701,6 +720,55 @@ export default function TenantDashboard() {
                             </Card>
                           ))}
                         </div>
+                        
+                        {/* Paginación */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-green-200">
+                            <div className="text-sm text-gray-600">
+                              Mostrando {startIndex + 1}-{Math.min(endIndex, pagosPagados.length)} de {pagosPagados.length} pagos
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentHistoryPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentHistoryPage === 1}
+                                className="flex items-center space-x-1"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                                <span>Anterior</span>
+                              </Button>
+                              
+                              <div className="flex items-center space-x-1">
+                                {[...Array(totalPages)].map((_, index) => {
+                                  const pageNumber = index + 1;
+                                  return (
+                                    <Button
+                                      key={pageNumber}
+                                      variant={pageNumber === currentHistoryPage ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => setCurrentHistoryPage(pageNumber)}
+                                      className="w-8 h-8 p-0"
+                                    >
+                                      {pageNumber}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentHistoryPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentHistoryPage === totalPages}
+                                className="flex items-center space-x-1"
+                              >
+                                <span>Siguiente</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
