@@ -434,7 +434,7 @@ export default function TenantDashboard() {
                   <p className="text-2xl font-bold text-gray-800">
                     {formatCurrency(stats.monthlyFee)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">Según apartamento</p>
+                  <p className="text-xs text-gray-500 mt-1">Es el porcentaje</p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-lg">
                   <Home className="text-blue-600 w-6 h-6" />
