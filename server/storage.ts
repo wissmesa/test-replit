@@ -80,7 +80,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...(user as any).users,
-      apartment: (user as any).apartment || undefined,
+      apartment: (user as any).apartments || undefined,
     };
   }
 
@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     
     return (results as any[]).map((result: any) => ({
       ...result.users,
-      apartment: result.apartment || undefined,
+      apartment: result.apartments || undefined,
     }));
   }
 
@@ -120,7 +120,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...(user as any).users,
-      apartment: (user as any).apartment || undefined,
+      apartment: (user as any).apartments || undefined,
     };
   }
 

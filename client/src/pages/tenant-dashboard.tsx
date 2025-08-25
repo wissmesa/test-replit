@@ -432,7 +432,7 @@ export default function TenantDashboard() {
                 <div>
                   <p className="text-sm text-gray-600">Alícuota Mensual</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {user.apartment?.alicuota ? `${user.apartment.alicuota}%` : 'N/A'}
+                    {user.apartment?.alicuota ? `${parseFloat(user.apartment.alicuota).toFixed(2)}%` : 'N/A'}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Es el porcentaje</p>
                 </div>
