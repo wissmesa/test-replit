@@ -531,12 +531,6 @@ export default function TenantDashboard() {
                                 <p className="text-xs text-gray-500">Estado</p>
                                 {getStatusBadge(pago.estado)}
                               </div>
-                              {pago.metodoPago && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Método</p>
-                                  <p className="text-sm text-gray-800">{pago.metodoPago}</p>
-                                </div>
-                              )}
                             </div>
                           </div>
                           <div className="flex space-x-2">
