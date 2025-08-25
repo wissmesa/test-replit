@@ -13,10 +13,24 @@ import ExchangeRatesPage from "@/pages/exchange-rates";
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={LoginPage} />
+      {!isAuthenticated ? (
+        <>
+          <Route path="/" component={LoginPage} />
+          <Route component={() => <LoginPage />} />
+        </>
       ) : (
         <>
           <Route path="/" component={() => {
@@ -31,9 +45,9 @@ function Router() {
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/tenant" component={TenantDashboard} />
           <Route path="/tasas-cambio" component={ExchangeRatesPage} />
+          <Route component={NotFound} />
         </>
       )}
-      <Route component={NotFound} />
     </Switch>
   );
 }
