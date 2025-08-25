@@ -26,7 +26,8 @@ import {
   Home,
   LogOut,
   Download,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
@@ -155,6 +156,8 @@ export default function TenantDashboard() {
         return <Badge className="bg-yellow-100 text-yellow-800 font-medium">Pendiente</Badge>;
       case 'vencido':
         return <Badge className="bg-red-100 text-red-800 font-medium">Vencido</Badge>;
+      case 'en_revision':
+        return <Badge className="bg-blue-100 text-blue-800 font-medium">En Revisión</Badge>;
       default:
         return <Badge variant="outline" className="font-medium">{estado}</Badge>;
     }
@@ -168,6 +171,8 @@ export default function TenantDashboard() {
         return <TriangleAlert className="w-6 h-6 text-accent" />;
       case 'vencido':
         return <AlertCircle className="w-6 h-6 text-error" />;
+      case 'en_revision':
+        return <Eye className="w-6 h-6 text-blue-600" />;
       default:
         return <CreditCard className="w-6 h-6 text-gray-400" />;
     }

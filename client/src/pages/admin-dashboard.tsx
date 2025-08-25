@@ -828,6 +828,8 @@ export default function AdminDashboard() {
         return <Badge className="bg-yellow-100 text-yellow-800 font-medium">Pendiente</Badge>;
       case 'vencido':
         return <Badge className="bg-red-100 text-red-800 font-medium">Vencido</Badge>;
+      case 'en_revision':
+        return <Badge className="bg-blue-100 text-blue-800 font-medium">En Revisión</Badge>;
       default:
         return <Badge variant="outline" className="font-medium">{estado}</Badge>;
     }
@@ -2511,6 +2513,7 @@ export default function AdminDashboard() {
                           <SelectItem value="pendiente">Pendiente</SelectItem>
                           <SelectItem value="pagado">Pagado</SelectItem>
                           <SelectItem value="vencido">Vencido</SelectItem>
+                          <SelectItem value="en_revision">En Revisión</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>

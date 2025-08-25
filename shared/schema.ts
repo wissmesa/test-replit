@@ -67,7 +67,7 @@ export const pagos = pgTable("pagos", {
   monto: decimal("monto", { precision: 10, scale: 2 }).notNull(),
   fechaVencimiento: timestamp("fecha_vencimiento").notNull(),
   fechaPago: timestamp("fecha_pago"),
-  estado: varchar("estado").notNull().$type<'pendiente' | 'pagado' | 'vencido'>().default('pendiente'),
+  estado: varchar("estado").notNull().$type<'pendiente' | 'pagado' | 'vencido' | 'en_revision'>().default('pendiente'),
   metodoPago: varchar("metodo_pago"),
   concepto: varchar("concepto").notNull(),
   comprobanteUrl: varchar("comprobante_url"), // URL del comprobante de pago subido
