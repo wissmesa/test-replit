@@ -789,6 +789,51 @@ export default function TenantDashboard() {
                   </Button>
                 </div>
               )}
+              
+              {/* Información declarada por el propietario */}
+              {(selectedPaymentDetails.estado === 'en_revision' || selectedPaymentDetails.estado === 'pagado') && (
+                selectedPaymentDetails.fechaOperacion || selectedPaymentDetails.cedulaRif || 
+                selectedPaymentDetails.tipoOperacion || selectedPaymentDetails.correoElectronico
+              ) && (
+                <>
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Información Declarada</p>
+                    <div className="space-y-3">
+                      {selectedPaymentDetails.fechaOperacion && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Fecha de Operación</p>
+                            <p className="text-sm">{new Date(selectedPaymentDetails.fechaOperacion).toLocaleDateString('es-ES')}</p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedPaymentDetails.cedulaRif && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Cédula/RIF</p>
+                          <p className="text-sm">{selectedPaymentDetails.cedulaRif}</p>
+                        </div>
+                      )}
+                      {selectedPaymentDetails.tipoOperacion && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Tipo de Operación</p>
+                          <p className="text-sm">
+                            {selectedPaymentDetails.tipoOperacion === 'mismo_banco' 
+                              ? 'Transferencia mismo banco' 
+                              : 'Transferencia desde otro banco'
+                            }
+                          </p>
+                        </div>
+                      )}
+                      {selectedPaymentDetails.correoElectronico && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Correo Electrónico</p>
+                          <p className="text-sm">{selectedPaymentDetails.correoElectronico}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex justify-end pt-4">
               <Button variant="outline" onClick={() => setShowPaymentDetailsDialog(false)}>
