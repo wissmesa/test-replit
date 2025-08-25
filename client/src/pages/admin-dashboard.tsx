@@ -81,7 +81,7 @@ const editPagoSchema = z.object({
   fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
   concepto: z.string().min(1, "Concepto requerido"),
   metodoPago: z.string().optional(),
-  estado: z.enum(["pendiente", "pagado", "vencido"]).optional()
+  estado: z.enum(["pendiente", "pagado", "vencido", "en_revision"]).optional()
 });
 
 const bulkPagoSchema = z.object({
