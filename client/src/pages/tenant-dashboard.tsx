@@ -1210,20 +1210,6 @@ export default function TenantDashboard() {
           </DialogContent>
         </Dialog>
       )}
-      
-      {/* 404 Error Component */}
-      <div className="mt-12 border border-red-200 bg-red-50 rounded-lg p-8">
-        <div className="text-center">
-          <div className="text-6xl font-bold text-red-600 mb-4">404</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Page Not Found</h2>
-          <p className="text-gray-600 mb-4">Did you forget to add the page to the router?</p>
-          <div className="text-left bg-white border border-red-200 rounded p-4 text-sm text-red-700 font-mono">
-            <p>Error: Cannot GET /tenant-dashboard</p>
-            <p className="mt-1">    at Router.handle (/src/routes/index.js:23:15)</p>
-            <p className="mt-1">    at next (/src/middleware/auth.js:42:7)</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
