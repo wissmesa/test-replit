@@ -393,18 +393,18 @@ export default function TenantDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Balance Actual</p>
-                  <p className={`text-2xl font-bold ${stats.currentBalance < 0 ? 'text-error' : 'text-secondary'}`}>
+                  <p className={`text-2xl font-bold ${stats.currentBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {formatCurrency(stats.currentBalance)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {stats.currentBalance < 0 ? 'Deuda pendiente' : 'Al día'}
                   </p>
                 </div>
-                <div className={`p-3 rounded-lg ${stats.currentBalance < 0 ? 'bg-error bg-opacity-10' : 'bg-secondary bg-opacity-10'}`}>
+                <div className={`p-3 rounded-lg ${stats.currentBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
                   {stats.currentBalance < 0 ? (
-                    <AlertCircle className="text-error w-6 h-6" />
+                    <AlertCircle className="text-red-600 w-6 h-6" />
                   ) : (
-                    <CheckCircle className="text-secondary w-6 h-6" />
+                    <CheckCircle className="text-green-600 w-6 h-6" />
                   )}
                 </div>
               </div>
@@ -416,11 +416,11 @@ export default function TenantDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Pagos Realizados</p>
-                  <p className="text-2xl font-bold text-secondary">{stats.paidPayments}</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.paidPayments}</p>
                   <p className="text-xs text-gray-500 mt-1">Este año</p>
                 </div>
-                <div className="bg-secondary bg-opacity-10 p-3 rounded-lg">
-                  <CheckCircle className="text-secondary w-6 h-6" />
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <CheckCircle className="text-green-600 w-6 h-6" />
                 </div>
               </div>
             </CardContent>
@@ -436,8 +436,8 @@ export default function TenantDashboard() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Según apartamento</p>
                 </div>
-                <div className="bg-primary bg-opacity-10 p-3 rounded-lg">
-                  <Home className="text-primary w-6 h-6" />
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Home className="text-blue-600 w-6 h-6" />
                 </div>
               </div>
             </CardContent>
