@@ -28,7 +28,8 @@ import {
   LogOut,
   Download,
   AlertCircle,
-  Eye
+  Eye,
+  TrendingUp
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
@@ -275,6 +276,15 @@ export default function TenantDashboard() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => window.location.href = "/tasas-cambio"}
+                className="flex items-center space-x-2 text-gray-600 hover:text-primary"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden md:block">Tasas BCV</span>
+              </Button>
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-800">
                   {user.primerNombre} {user.primerApellido}

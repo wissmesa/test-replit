@@ -941,6 +941,15 @@ export default function AdminDashboard() {
                 <span>Usuarios</span>
               </button>
             </li>
+            <li>
+              <button
+                onClick={() => window.location.href = "/tasas-cambio"}
+                className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+              >
+                <TrendingUp className="w-5 h-5" />
+                <span>Tasas de Cambio BCV</span>
+              </button>
+            </li>
           </ul>
         </nav>
         

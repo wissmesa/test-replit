@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import AdminDashboard from "@/pages/admin-dashboard";
 import TenantDashboard from "@/pages/tenant-dashboard";
+import ExchangeRatesPage from "@/pages/exchange-rates";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -29,6 +30,7 @@ function Router() {
           }} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/tenant" component={TenantDashboard} />
+          <Route path="/tasas-cambio" component={ExchangeRatesPage} />
         </>
       )}
       <Route component={NotFound} />

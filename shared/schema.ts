@@ -75,6 +75,15 @@ export const pagos = pgTable("pagos", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const tasasCambio = pgTable("tasas_cambio", {
+  id: serial("id").primaryKey(),
+  fecha: timestamp("fecha").notNull(),
+  moneda: varchar("moneda").notNull().$type<'USD' | 'EUR' | 'CNY' | 'TRY' | 'RUB'>(),
+  valor: decimal("valor", { precision: 15, scale: 8 }).notNull(),
+  fuente: varchar("fuente").notNull().default('BCV'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations: any = relations(users, ({ one, many }) => ({
   apartment: one(apartments, {
@@ -131,6 +140,13 @@ export const updatePagoSchema = createInsertSchema(pagos).omit({
   estado: z.string().optional(),
 });
 
+export const insertTasaCambioSchema = createInsertSchema(tasasCambio).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  fecha: z.string().transform((val) => new Date(val)),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -142,6 +158,9 @@ export type InsertApartment = z.infer<typeof insertApartmentSchema>;
 export type Pago = typeof pagos.$inferSelect;
 export type InsertPago = z.infer<typeof insertPagoSchema>;
 export type UpdatePago = z.infer<typeof updatePagoSchema>;
+
+export type TasaCambio = typeof tasasCambio.$inferSelect;
+export type InsertTasaCambio = z.infer<typeof insertTasaCambioSchema>;
 
 // Extended types with relations
 export type UserWithApartment = User & {

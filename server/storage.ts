@@ -2,6 +2,7 @@ import {
   users,
   apartments,
   pagos,
+  tasasCambio,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -9,6 +10,8 @@ import {
   type InsertApartment,
   type Pago,
   type InsertPago,
+  type TasaCambio,
+  type InsertTasaCambio,
   type UserWithApartment,
   type PagoWithRelations,
 } from "@shared/schema";
@@ -44,6 +47,12 @@ export interface IStorage {
   deletePago(id: string): Promise<void>;
   updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
   unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
+  
+  // Exchange rate operations
+  getTasasCambio(moneda?: string, limite?: number): Promise<TasaCambio[]>;
+  getLatestTasaCambio(moneda: string): Promise<TasaCambio | undefined>;
+  createTasaCambio(tasa: InsertTasaCambio): Promise<TasaCambio>;
+  getTasasCambioByDateRange(fechaInicio: Date, fechaFin: Date, moneda?: string): Promise<TasaCambio[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -376,6 +385,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pagos.idApartamento, apartmentId));
     
     return payments[0].count > 0;
+  }
+
+  // Exchange rate operations
+  async getTasasCambio(moneda?: string, limite?: number): Promise<TasaCambio[]> {
+    let query = db.select().from(tasasCambio);
+    
+    if (moneda) {
+      query = query.where(eq(tasasCambio.moneda, moneda as any));
+    }
+    
+    query = query.orderBy(desc(tasasCambio.fecha), desc(tasasCambio.createdAt));
+    
+    if (limite) {
+      query = query.limit(limite);
+    }
+    
+    return await query;
+  }
+
+  async getLatestTasaCambio(moneda: string): Promise<TasaCambio | undefined> {
+    const [tasa] = await db
+      .select()
+      .from(tasasCambio)
+      .where(eq(tasasCambio.moneda, moneda as any))
+      .orderBy(desc(tasasCambio.fecha), desc(tasasCambio.createdAt))
+      .limit(1);
+    
+    return tasa;
+  }
+
+  async createTasaCambio(tasa: InsertTasaCambio): Promise<TasaCambio> {
+    const [newTasa] = await db
+      .insert(tasasCambio)
+      .values(tasa)
+      .returning();
+    
+    return newTasa;
+  }
+
+  async getTasasCambioByDateRange(fechaInicio: Date, fechaFin: Date, moneda?: string): Promise<TasaCambio[]> {
+    let query = db
+      .select()
+      .from(tasasCambio)
+      .where(
+        and(
+          sql`${tasasCambio.fecha} >= ${fechaInicio}`,
+          sql`${tasasCambio.fecha} <= ${fechaFin}`
+        )
+      );
+    
+    if (moneda) {
+      query = query.where(
+        and(
+          sql`${tasasCambio.fecha} >= ${fechaInicio}`,
+          sql`${tasasCambio.fecha} <= ${fechaFin}`,
+          eq(tasasCambio.moneda, moneda as any)
+        )
+      );
+    }
+    
+    return await query.orderBy(desc(tasasCambio.fecha));
   }
 }
 

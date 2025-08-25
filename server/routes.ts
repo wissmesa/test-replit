@@ -652,6 +652,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exchange rates routes
+  app.get('/api/tasas-cambio', isAuthenticated, async (req: any, res) => {
+    try {
+      const { moneda, limite } = req.query;
+      const tasas = await storage.getTasasCambio(moneda, limite ? parseInt(limite) : undefined);
+      res.json(tasas);
+    } catch (error) {
+      console.error("Error fetching exchange rates:", error);
+      res.status(500).json({ message: "Failed to fetch exchange rates" });
+    }
+  });
+
+  app.get('/api/tasas-cambio/latest/:moneda', isAuthenticated, async (req: any, res) => {
+    try {
+      const { moneda } = req.params;
+      const tasa = await storage.getLatestTasaCambio(moneda);
+      if (!tasa) {
+        return res.status(404).json({ message: "Exchange rate not found" });
+      }
+      res.json(tasa);
+    } catch (error) {
+      console.error("Error fetching latest exchange rate:", error);
+      res.status(500).json({ message: "Failed to fetch latest exchange rate" });
+    }
+  });
+
+  app.post('/api/tasas-cambio/sync', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { BCVService } = await import('./bcvService');
+      const tasasBCV = await BCVService.obtenerTasasCambio();
+      
+      const tasasGuardadas = [];
+      
+      for (const tasaBCV of tasasBCV) {
+        // Check if we already have this rate for today
+        const existingTasa = await storage.getLatestTasaCambio(tasaBCV.moneda);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        
+        if (!existingTasa || existingTasa.fecha < hoy) {
+          const nuevaTasa = await storage.createTasaCambio({
+            moneda: tasaBCV.moneda,
+            valor: tasaBCV.valor,
+            fecha: tasaBCV.fecha,
+            fuente: 'BCV'
+          });
+          tasasGuardadas.push(nuevaTasa);
+        }
+      }
+      
+      res.json({ 
+        message: `Sincronizadas ${tasasGuardadas.length} tasas de cambio`,
+        tasas: tasasGuardadas
+      });
+    } catch (error) {
+      console.error("Error syncing exchange rates:", error);
+      res.status(500).json({ message: "Failed to sync exchange rates" });
+    }
+  });
+
+  app.get('/api/tasas-cambio/range', isAuthenticated, async (req: any, res) => {
+    try {
+      const { fechaInicio, fechaFin, moneda } = req.query;
+      
+      if (!fechaInicio || !fechaFin) {
+        return res.status(400).json({ message: "fechaInicio and fechaFin are required" });
+      }
+      
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      
+      const tasas = await storage.getTasasCambioByDateRange(inicio, fin, moneda);
+      res.json(tasas);
+    } catch (error) {
+      console.error("Error fetching exchange rates range:", error);
+      res.status(500).json({ message: "Failed to fetch exchange rates range" });
+    }
+  });
+
+  app.post('/api/tasas-cambio', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { insertTasaCambioSchema } = await import('../shared/schema');
+      const validatedData = insertTasaCambioSchema.parse(req.body);
+      
+      const nuevaTasa = await storage.createTasaCambio(validatedData);
+      res.json(nuevaTasa);
+    } catch (error) {
+      console.error("Error creating exchange rate:", error);
+      res.status(500).json({ message: "Failed to create exchange rate" });
+    }
+  });
+
   // Stats routes
   app.get('/api/stats', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
