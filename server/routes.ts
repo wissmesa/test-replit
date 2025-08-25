@@ -673,7 +673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           idApartamento: pago.idApartamento,
           monto: remainingAmountUsd.toFixed(2),
           fechaVencimiento: pago.fechaVencimiento,
-          concepto: "Saldo pendiente",
+          concepto: `${pago.concepto} - Saldo pendiente`,
           estado: 'pendiente' as const
         };
         
