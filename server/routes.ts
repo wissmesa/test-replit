@@ -663,7 +663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cedulaRif,
           tipoOperacion,
           correoElectronico,
-          monto: paidAmountUsd.toFixed(2) // Update with actual paid amount in USD
+          monto: paidAmountUsd.toFixed(2), // Update with actual paid amount in USD
+          montoBs: paidAmountBs.toFixed(2) // Save the declared amount in Bs
         });
         
         // Create new payment for the remaining amount
@@ -691,7 +692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fechaOperacion: new Date(fechaOperacion),
           cedulaRif,
           tipoOperacion,
-          correoElectronico
+          correoElectronico,
+          montoBs: paidAmountBs.toFixed(2) // Save the declared amount in Bs
         });
         
         res.json(updatedPago);

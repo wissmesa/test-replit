@@ -830,6 +830,18 @@ export default function TenantDashboard() {
                           <p className="text-sm">{selectedPaymentDetails.correoElectronico}</p>
                         </div>
                       )}
+                      {selectedPaymentDetails.montoBs && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Monto Declarado (Bs.)</p>
+                          <p className="text-sm font-semibold text-green-600">
+                            {new Intl.NumberFormat('es-VE', {
+                              style: 'currency',
+                              currency: 'VES',
+                              minimumFractionDigits: 2
+                            }).format(parseFloat(selectedPaymentDetails.montoBs))}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
