@@ -144,10 +144,12 @@ export default function ExchangeRatesPage() {
   };
 
   const getTrend = (tasas: TasaCambio[]) => {
-    if (!tasas || tasas.length < 2) return null;
+    if (!tasas || tasas.length < 2 || !tasas[0] || !tasas[1]) return null;
     
     const current = parseFloat(tasas[0].valor);
     const previous = parseFloat(tasas[1].valor);
+    
+    if (isNaN(current) || isNaN(previous)) return null;
     
     if (current > previous) {
       return { direction: 'up', percentage: ((current - previous) / previous * 100).toFixed(2) };
@@ -366,12 +368,14 @@ export default function ExchangeRatesPage() {
                       const prevTasa = tasas[index + 1];
                       let change = null;
                       
-                      if (prevTasa) {
+                      if (prevTasa && tasa && prevTasa.valor && tasa.valor) {
                         const current = parseFloat(tasa.valor);
                         const previous = parseFloat(prevTasa.valor);
-                        const diff = current - previous;
-                        const percentage = (diff / previous * 100);
-                        change = { diff, percentage };
+                        if (!isNaN(current) && !isNaN(previous) && previous !== 0) {
+                          const diff = current - previous;
+                          const percentage = (diff / previous * 100);
+                          change = { diff, percentage };
+                        }
                       }
                       
                       return (
