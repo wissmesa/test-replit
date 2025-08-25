@@ -25,10 +25,6 @@ import { useLocation } from "wouter";
 
 const MONEDAS = [
   { codigo: 'USD', nombre: 'Dólar Estadounidense', simbolo: '$', icono: DollarSign },
-  { codigo: 'EUR', nombre: 'Euro', simbolo: '€', icono: TrendingUp },
-  { codigo: 'CNY', nombre: 'Yuan Chino', simbolo: '¥', icono: TrendingUp },
-  { codigo: 'TRY', nombre: 'Lira Turca', simbolo: '₺', icono: TrendingUp },
-  { codigo: 'RUB', nombre: 'Rublo Ruso', simbolo: '₽', icono: TrendingUp },
 ];
 
 export default function ExchangeRatesPage() {
@@ -64,25 +60,20 @@ export default function ExchangeRatesPage() {
     enabled: !!user,
   });
 
-  // Get latest rates for all currencies
-  const { data: latestRates } = useQuery({
-    queryKey: ["/api/tasas-cambio", "latest"],
+  // Get latest USD rate
+  const { data: latestUsdRate } = useQuery({
+    queryKey: ["/api/tasas-cambio", "latest", "USD"],
     queryFn: async () => {
-      const rates = await Promise.all(
-        MONEDAS.map(async (moneda) => {
-          try {
-            const response = await fetch(`/api/tasas-cambio/latest/${moneda.codigo}`, {
-              credentials: 'include'
-            });
-            if (!response.ok) throw new Error('Failed to fetch');
-            const data = await response.json();
-            return { ...data, moneda: moneda.codigo, nombre: moneda.nombre, simbolo: moneda.simbolo };
-          } catch (error) {
-            return null;
-          }
-        })
-      );
-      return rates.filter((rate): rate is NonNullable<typeof rate> => rate !== null);
+      try {
+        const response = await fetch(`/api/tasas-cambio/latest/USD`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+        return { ...data, moneda: 'USD', nombre: 'Dólar Estadounidense', simbolo: '$' };
+      } catch (error) {
+        return null;
+      }
     },
     enabled: !!user,
   });
@@ -246,44 +237,37 @@ export default function ExchangeRatesPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Latest Rates Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {MONEDAS.map((moneda) => {
-            const rate = latestRates?.find(r => r.moneda === moneda.codigo);
-            const IconComponent = moneda.icono;
-            
-            return (
-              <Card key={moneda.codigo} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <IconComponent className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{moneda.codigo}</p>
-                        <p className="text-xs text-gray-500">{moneda.nombre}</p>
-                      </div>
-                    </div>
+        {/* USD Rate Overview */}
+        <div className="mb-8">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <DollarSign className="w-8 h-8 text-blue-600" />
                   </div>
-                  <div className="mt-4">
-                    {rate ? (
-                      <>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {rate.valor ? formatCurrency(rate.valor, 'Bs.') : 'Sin datos'}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {rate.fecha ? formatDate(rate.fecha.toString()) : 'Sin fecha'}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-sm text-gray-400">Sin datos</p>
-                    )}
+                  <div>
+                    <p className="text-lg font-medium text-gray-900">USD - Dólar Estadounidense</p>
+                    <p className="text-sm text-gray-500">Tasa oficial BCV</p>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+                <div className="text-right">
+                  {latestUsdRate ? (
+                    <>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {latestUsdRate.valor ? formatCurrency(latestUsdRate.valor, 'Bs.') : 'Sin datos'}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {latestUsdRate.fecha ? formatDate(latestUsdRate.fecha.toString()) : 'Sin fecha'}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-lg text-gray-400">Sin datos</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Controls */}
@@ -304,22 +288,7 @@ export default function ExchangeRatesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <Label htmlFor="moneda">Moneda</Label>
-                <Select value={selectedMoneda} onValueChange={setSelectedMoneda}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONEDAS.map((moneda) => (
-                      <SelectItem key={moneda.codigo} value={moneda.codigo}>
-                        {moneda.codigo} - {moneda.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="limite">Cantidad de registros</Label>
                 <Select value={limite.toString()} onValueChange={(value) => setLimite(parseInt(value))}>
@@ -365,7 +334,7 @@ export default function ExchangeRatesPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Historial de {MONEDAS.find(m => m.codigo === selectedMoneda)?.nombre || selectedMoneda}
+              Historial de Dólar Estadounidense (USD)
             </CardTitle>
           </CardHeader>
           <CardContent>
