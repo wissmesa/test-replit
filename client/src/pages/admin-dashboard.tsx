@@ -2299,18 +2299,32 @@ export default function AdminDashboard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Apartamento</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString() || ""}>
+                      <Select onValueChange={(value) => {
+                        const apartmentId = parseInt(value);
+                        field.onChange(apartmentId);
+                        // Auto-select user when apartment is selected
+                        const selectedUser = users?.find(u => u.idApartamento === apartmentId);
+                        if (selectedUser) {
+                          pagoForm.setValue('idUsuario', selectedUser.id);
+                        }
+                      }} value={field.value?.toString() || ""}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona apartamento" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {apartments?.map(apt => (
-                            <SelectItem key={apt.id} value={apt.id.toString()}>
-                              Apt. {apt.numero}
-                            </SelectItem>
-                          ))}
+                          {apartments?.map(apt => {
+                            const assignedUser = users?.find(u => u.idApartamento === apt.id);
+                            return (
+                              <SelectItem key={apt.id} value={apt.id.toString()}>
+                                Apt. {apt.numero}
+                                {assignedUser && 
+                                  ` - ${assignedUser.primerNombre} ${assignedUser.primerApellido}`
+                                }
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                       <FormMessage />
