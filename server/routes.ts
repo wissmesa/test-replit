@@ -788,7 +788,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         
-        if (!existingTasa || existingTasa.fecha < hoy) {
+        // Siempre actualizar si tenemos una nueva tasa, independientemente de la fecha
+        if (!existingTasa || parseFloat(existingTasa.valor) !== parseFloat(tasaBCV.valor)) {
           const nuevaTasa = await storage.createTasaCambio({
             moneda: tasaBCV.moneda,
             valor: tasaBCV.valor,

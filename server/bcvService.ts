@@ -61,8 +61,18 @@ export class BCVService {
             while (currentElement) {
               valueElement = currentElement.querySelector('strong');
               if (valueElement && valueElement.textContent) {
-                const valor = valueElement.textContent.trim().replace(/,/g, '');
-                if (valor && !isNaN(parseFloat(valor)) && parseFloat(valor) > 1) {
+                let valor = valueElement.textContent.trim().replace(/,/g, '');
+                const numValor = parseFloat(valor);
+                
+                // Validar que el valor esté en un rango razonable para cada moneda
+                const esValorValido = 
+                  (moneda.codigo === 'USD' && numValor > 100 && numValor < 200) ||
+                  (moneda.codigo === 'EUR' && numValor > 150 && numValor < 200) ||
+                  (moneda.codigo === 'CNY' && numValor > 15 && numValor < 30) ||
+                  (moneda.codigo === 'TRY' && numValor > 2 && numValor < 10) ||
+                  (moneda.codigo === 'RUB' && numValor > 1 && numValor < 5);
+                
+                if (valor && !isNaN(numValor) && esValorValido) {
                   tasas.push({
                     moneda: moneda.codigo as 'USD' | 'EUR' | 'CNY' | 'TRY' | 'RUB',
                     valor: valor,
