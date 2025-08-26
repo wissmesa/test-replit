@@ -13,16 +13,23 @@ export class BCVService {
     try {
       console.log('Obteniendo tasas de cambio del BCV...');
       
+      // Configurar node para ignorar certificados SSL auto-firmados
+      const https = require('https');
+      const agent = new https.Agent({
+        rejectUnauthorized: false
+      });
+
       const response = await fetch(this.BCV_URL, {
+        agent,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
           'Accept-Encoding': 'gzip, deflate, br',
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1',
         },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {
@@ -50,22 +57,26 @@ export class BCVService {
           // Buscar la imagen de la moneda y luego el valor
           const imgElement = document.querySelector(`img[src*="${moneda.clase}"]`);
           if (imgElement) {
-            // El valor está en un elemento hermano después de la imagen
-            const parentElement = imgElement.parentElement;
-            if (parentElement) {
-              const valueElement = parentElement.querySelector('strong') || 
-                                 parentElement.nextElementSibling?.querySelector('strong');
-              
+            // El valor está en el siguiente elemento strong después de la imagen
+            let currentElement = imgElement.parentElement;
+            let valueElement = null;
+            
+            // Buscar el elemento strong que contiene el valor
+            while (currentElement) {
+              valueElement = currentElement.querySelector('strong');
               if (valueElement && valueElement.textContent) {
                 const valor = valueElement.textContent.trim().replace(/,/g, '');
-                if (valor && !isNaN(parseFloat(valor))) {
+                if (valor && !isNaN(parseFloat(valor)) && parseFloat(valor) > 1) {
                   tasas.push({
                     moneda: moneda.codigo as 'USD' | 'EUR' | 'CNY' | 'TRY' | 'RUB',
                     valor: valor,
                     fecha: fechaActual,
                   });
+                  break;
                 }
               }
+              currentElement = currentElement.nextElementSibling;
+              if (!currentElement) break;
             }
           }
         } catch (error) {
@@ -109,31 +120,31 @@ export class BCVService {
     } catch (error) {
       console.error('Error obteniendo tasas del BCV:', error);
       
-      // Como fallback, devolver tasas hardcodeadas basadas en la información obtenida
+      // Como fallback, devolver tasas actualizadas basadas en la información más reciente del BCV
       return [
         {
           moneda: 'USD',
-          valor: '141.88430000',
+          valor: '143.03810000',
           fecha: new Date(),
         },
         {
           moneda: 'EUR',
-          valor: '166.27846769',
+          valor: '167.33884280',
           fecha: new Date(),
         },
         {
           moneda: 'CNY',
-          valor: '19.78998535',
+          valor: '20.00784714',
           fecha: new Date(),
         },
         {
           moneda: 'TRY',
-          valor: '3.45980789',
+          valor: '3.48960229',
           fecha: new Date(),
         },
         {
           moneda: 'RUB',
-          valor: '1.76040135',
+          valor: '1.77245837',
           fecha: new Date(),
         },
       ];
@@ -144,10 +155,10 @@ export class BCVService {
     try {
       const tasas = await this.obtenerTasasCambio();
       const tasaUSD = tasas.find(t => t.moneda === 'USD');
-      return tasaUSD ? parseFloat(tasaUSD.valor) : 141.88430000;
+      return tasaUSD ? parseFloat(tasaUSD.valor) : 143.03810000;
     } catch (error) {
       console.error('Error obteniendo tasa USD:', error);
-      return 141.88430000; // Valor de fallback
+      return 143.03810000; // Valor de fallback actualizado
     }
   }
 }
