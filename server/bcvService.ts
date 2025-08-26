@@ -13,14 +13,10 @@ export class BCVService {
     try {
       console.log('Obteniendo tasas de cambio del BCV...');
       
-      // Configurar node para ignorar certificados SSL auto-firmados
-      const https = require('https');
-      const agent = new https.Agent({
-        rejectUnauthorized: false
-      });
-
+      // Configurar para ignorar errores de certificado SSL temporalmente
+      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
+      
       const response = await fetch(this.BCV_URL, {
-        agent,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
