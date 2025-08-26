@@ -226,8 +226,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the apartment first
       const apartment = await storage.createApartment(parsedApartmentData);
       
-      // If idUsuario is provided and not "sin_asignar", assign the user to the apartment
-      if (idUsuario && idUsuario !== "sin_asignar") {
+      // If idUsuario is provided and not "sin_asignar" or "unassigned", assign the user to the apartment
+      if (idUsuario && idUsuario !== "sin_asignar" && idUsuario !== "unassigned") {
         await storage.assignUserToApartment(apartment.id, idUsuario);
       }
       
@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let apartment;
       
       // Handle user assignment changes first, then update apartment basic data
-      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined)) {
+      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "unassigned")) {
         // User is being unassigned
         const result = await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
         await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
