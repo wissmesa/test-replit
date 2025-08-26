@@ -283,20 +283,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get current apartment state to check if user is being unassigned
       const currentApartment = await storage.getApartment(apartmentId);
+      const currentUser = await storage.getUserByApartment(apartmentId);
       const apartmentData = req.body;
       
-      console.log("Updating apartment:", apartmentId);
-      console.log("Current apartment:", currentApartment);
-      console.log("New data:", apartmentData);
-      console.log("idUsuario value:", apartmentData.idUsuario, "type:", typeof apartmentData.idUsuario);
       
       let apartment;
       
       // Handle user assignment changes first, then update apartment basic data
-      if (currentApartment && currentApartment.idUsuario && (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "unassigned")) {
+      const isUnassigning = (apartmentData.idUsuario === null || apartmentData.idUsuario === undefined || apartmentData.idUsuario === "unassigned");
+      
+      if (isUnassigning && currentUser) {
         // User is being unassigned
-        const result = await storage.unassignUserFromApartment(apartmentId, currentApartment.idUsuario);
-        await storage.unassignPendingPaymentsByApartment(apartmentId, currentApartment.idUsuario);
+        const result = await storage.unassignUserFromApartment(apartmentId, currentUser.id);
+        await storage.unassignPendingPaymentsByApartment(apartmentId, currentUser.id);
         
         // Update apartment basic data (excluding user assignment as it's already handled)
         const { idUsuario, ...basicApartmentData } = apartmentData;
