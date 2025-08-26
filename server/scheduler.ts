@@ -17,24 +17,16 @@ export class TaskScheduler {
   public start(): void {
     console.log('🚀 Task Scheduler iniciado');
 
-    // Ejecutar todos los días a las 6:00 AM
-    cron.schedule('0 6 * * *', async () => {
+    // Ejecutar de lunes a viernes a las 9:00 AM hora de Venezuela
+    cron.schedule('0 9 * * 1-5', async () => {
       console.log('⏰ Iniciando sincronización automática de tasas BCV...');
       await this.syncBcvRates();
     }, {
       timezone: "America/Caracas"
     });
 
-    // Ejecutar también a las 12:00 PM como respaldo
-    cron.schedule('0 12 * * *', async () => {
-      console.log('⏰ Sincronización de respaldo de tasas BCV...');
-      await this.syncBcvRates();
-    }, {
-      timezone: "America/Caracas"
-    });
-
     console.log('📅 Tareas programadas:');
-    console.log('  - Sincronización BCV: 6:00 AM y 12:00 PM (GMT-4)');
+    console.log('  - Sincronización BCV: 9:00 AM, lunes a viernes (GMT-4)');
   }
 
   private async syncBcvRates(): Promise<void> {
