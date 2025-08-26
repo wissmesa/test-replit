@@ -63,7 +63,8 @@ const apartmentSchema = z.object({
 const editApartmentSchema = z.object({
   numero: z.string().min(1, "Número de apartamento requerido"),
   piso: z.number().min(1, "Piso debe ser mayor a 0"),
-  alicuota: z.string().min(1, "Alícuota requerida")
+  alicuota: z.string().min(1, "Alícuota requerida"),
+  idUsuario: z.string().optional()
 });
 
 const pagoSchema = z.object({
@@ -166,7 +167,7 @@ export default function AdminDashboard() {
       numero: "",
       piso: 1,
       alicuota: "",
-      idUsuario: "sin_asignar"
+      idUsuario: "unassigned"
     },
   });
 
@@ -191,7 +192,8 @@ export default function AdminDashboard() {
     defaultValues: {
       numero: "",
       piso: 1,
-      alicuota: ""
+      alicuota: "",
+      idUsuario: "unassigned"
     }
   });
 
@@ -661,7 +663,11 @@ export default function AdminDashboard() {
   };
 
   const onCreateApartment = async (data: ApartmentFormData) => {
-    createApartmentMutation.mutate(data);
+    const submitData = {
+      ...data,
+      idUsuario: data.idUsuario === "unassigned" ? null : data.idUsuario
+    };
+    createApartmentMutation.mutate(submitData);
   };
 
 
@@ -693,7 +699,8 @@ export default function AdminDashboard() {
     editApartmentForm.reset({
       numero: apartment.numero,
       piso: apartment.piso,
-      alicuota: apartment.alicuota
+      alicuota: apartment.alicuota,
+      idUsuario: apartment.user?.id || "unassigned"
     });
     setShowEditApartmentDialog(true);
   };
@@ -703,7 +710,12 @@ export default function AdminDashboard() {
   };
 
   const onEditApartment = async (data: EditApartmentFormData) => {
-    editApartmentMutation.mutate(data);
+    const submitData = {
+      ...data,
+      idUsuario: data.idUsuario === "unassigned" ? null : data.idUsuario,
+      id: editingApartment?.id
+    };
+    editApartmentMutation.mutate(submitData);
   };
 
   const onCreatePago = async (data: PagoFormData) => {
@@ -1799,7 +1811,7 @@ export default function AdminDashboard() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="">Sin asignar</SelectItem>
+                                  <SelectItem value="unassigned">Sin asignar</SelectItem>
                                   {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
                                     <SelectItem key={user.id} value={user.id}>
                                       {user.primerNombre} {user.primerApellido}
@@ -2229,6 +2241,32 @@ export default function AdminDashboard() {
                     <FormControl>
                       <Input placeholder="Ej: 8.50" type="number" step="0.01" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editApartmentForm.control}
+                name="idUsuario"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Propietario Asignado (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un propietario (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Sin asignar</SelectItem>
+                        {users?.filter(u => u.tipoUsuario === 'propietario' && (!u.idApartamento || u.id === editingApartment?.user?.id)).map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.primerNombre} {user.primerApellido}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
