@@ -70,10 +70,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.createUser(userToCreate);
       
-      // Auto-login after registration
-      req.session.userId = user.id;
-      req.session.userEmail = user.correo;
-      req.session.userType = user.tipoUsuario;
+      // Only auto-login if user is not already logged in (not called by admin)
+      if (!req.session.userId) {
+        req.session.userId = user.id;
+        req.session.userEmail = user.correo;
+        req.session.userType = user.tipoUsuario;
+      }
 
       // Return user without password
       const { contrasena, ...userWithoutPassword } = user;
