@@ -285,6 +285,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentApartment = await storage.getApartment(apartmentId);
       const apartmentData = req.body;
       
+      console.log("Updating apartment:", apartmentId);
+      console.log("Current apartment:", currentApartment);
+      console.log("New data:", apartmentData);
+      console.log("idUsuario value:", apartmentData.idUsuario, "type:", typeof apartmentData.idUsuario);
+      
       let apartment;
       
       // Handle user assignment changes first, then update apartment basic data
