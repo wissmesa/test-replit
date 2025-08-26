@@ -57,7 +57,7 @@ const apartmentSchema = z.object({
   numero: z.string().min(1, "Número de apartamento requerido"),
   piso: z.number().min(1, "Piso debe ser mayor a 0"),
   alicuota: z.string().min(1, "Alícuota requerida"),
-  idUsuario: z.string().min(1, "Debe seleccionar un propietario")
+  idUsuario: z.string().optional()
 });
 
 const editApartmentSchema = z.object({
@@ -1791,14 +1791,15 @@ export default function AdminDashboard() {
                           name="idUsuario"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Propietario Asignado</FormLabel>
+                              <FormLabel>Propietario Asignado (Opcional)</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un propietario" />
+                                    <SelectValue placeholder="Selecciona un propietario (opcional)" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
+                                  <SelectItem value="">Sin asignar</SelectItem>
                                   {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
                                     <SelectItem key={user.id} value={user.id}>
                                       {user.primerNombre} {user.primerApellido}
