@@ -502,6 +502,7 @@ export default function AdminDashboard() {
         description: "El apartamento ha sido registrado exitosamente",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setShowApartmentDialog(false);
       apartmentForm.reset();
@@ -603,6 +604,7 @@ export default function AdminDashboard() {
         description: "Los datos del apartamento han sido actualizados exitosamente",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setShowEditApartmentDialog(false);
       setEditingApartment(null);
