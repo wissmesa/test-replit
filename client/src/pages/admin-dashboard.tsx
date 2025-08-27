@@ -133,11 +133,15 @@ export default function AdminDashboard() {
   
   // Pagination states for apartments
   const [currentPageApartments, setCurrentPageApartments] = useState(1);
-  const [itemsPerPageApartments] = useState(10);
+  const [itemsPerPageApartments, setItemsPerPageApartments] = useState(10);
   
   // Pagination states for users
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
-  const [itemsPerPageUsers] = useState(10);
+  const [itemsPerPageUsers, setItemsPerPageUsers] = useState(10);
+  
+  // Pagination states for payments
+  const [currentPagePayments, setCurrentPagePayments] = useState(1);
+  const [itemsPerPagePayments, setItemsPerPagePayments] = useState(10);
   
   // Filter states for users
   const [usersFilters, setUsersFilters] = useState({
@@ -667,7 +671,7 @@ export default function AdminDashboard() {
   const onCreateApartment = async (data: ApartmentFormData) => {
     const submitData = {
       ...data,
-      idUsuario: data.idUsuario === "unassigned" ? null : data.idUsuario
+      idUsuario: data.idUsuario === "unassigned" ? undefined : data.idUsuario
     };
     createApartmentMutation.mutate(submitData);
   };
@@ -714,7 +718,7 @@ export default function AdminDashboard() {
   const onEditApartment = async (data: EditApartmentFormData) => {
     const submitData = {
       ...data,
-      idUsuario: data.idUsuario === "unassigned" ? null : data.idUsuario,
+      idUsuario: data.idUsuario === "unassigned" ? undefined : data.idUsuario,
       id: editingApartment?.id
     };
     editApartmentMutation.mutate(submitData);
@@ -880,6 +884,29 @@ export default function AdminDashboard() {
     }
     return true;
   }) || [];
+
+  // Pagination logic for payments
+  const totalPayments = filteredPagos.length;
+  const totalPagesPayments = Math.ceil(totalPayments / itemsPerPagePayments);
+  const startIndexPayments = (currentPagePayments - 1) * itemsPerPagePayments;
+  const endIndexPayments = startIndexPayments + itemsPerPagePayments;
+  const paginatedPagos = filteredPagos.slice(startIndexPayments, endIndexPayments);
+
+  const handlePreviousPagePayments = () => {
+    if (currentPagePayments > 1) {
+      setCurrentPagePayments(currentPagePayments - 1);
+    }
+  };
+
+  const handleNextPagePayments = () => {
+    if (currentPagePayments < totalPagesPayments) {
+      setCurrentPagePayments(currentPagePayments + 1);
+    }
+  };
+
+  const handlePageClickPayments = (pageNumber: number) => {
+    setCurrentPagePayments(pageNumber);
+  };
 
   if (authLoading || !user || user.tipoUsuario !== 'admin') {
     return <LoadingModal isOpen={true} message="Cargando..." />;
@@ -1126,7 +1153,7 @@ export default function AdminDashboard() {
             
             <CardContent>
               {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div className="relative">
                   <Input
                     placeholder="Buscar por propietario..."
@@ -1184,6 +1211,20 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
+                <Select value={itemsPerPagePayments.toString()} onValueChange={(value) => {
+                    setItemsPerPagePayments(parseInt(value));
+                    setCurrentPagePayments(1);
+                  }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 filas</SelectItem>
+                    <SelectItem value="10">10 filas</SelectItem>
+                    <SelectItem value="20">20 filas</SelectItem>
+                    <SelectItem value="50">50 filas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               {/* Payments Table */}
@@ -1207,14 +1248,14 @@ export default function AdminDashboard() {
                           Cargando pagos...
                         </td>
                       </tr>
-                    ) : filteredPagos.length === 0 ? (
+                    ) : paginatedPagos.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center py-8 text-gray-500">
                           No hay pagos para mostrar
                         </td>
                       </tr>
                     ) : (
-                      filteredPagos.map((pago) => (
+                      paginatedPagos.map((pago) => (
                         <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-3">
@@ -1307,22 +1348,60 @@ export default function AdminDashboard() {
               </div>
               
               {/* Pagination */}
-              <div className="flex justify-between items-center mt-6">
-                <p className="text-sm text-gray-600">
-                  Mostrando {filteredPagos.length} de {pagos?.length || 0} registros
-                </p>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm">1</Button>
-                  <Button variant="outline" size="sm">2</Button>
-                  <Button variant="outline" size="sm">3</Button>
-                  <Button variant="outline" size="sm">
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+              {totalPagesPayments > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <p className="text-sm text-gray-600">
+                    Mostrando {paginatedPagos.length} de {filteredPagos.length} registros filtrados ({pagos?.length || 0} total)
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePreviousPagePayments}
+                      disabled={currentPagePayments === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex space-x-1">
+                      {Array.from({ length: Math.min(5, totalPagesPayments) }, (_, i) => {
+                        let pageNum;
+                        if (totalPagesPayments <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPagePayments <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPagePayments >= totalPagesPayments - 2) {
+                          pageNum = totalPagesPayments - 4 + i;
+                        } else {
+                          pageNum = currentPagePayments - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPagePayments === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageClickPayments(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNextPagePayments}
+                      disabled={currentPagePayments === totalPagesPayments}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1566,6 +1645,20 @@ export default function AdminDashboard() {
                       <SelectItem value="all">Todos los tipos</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="propietario">Propietario</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={itemsPerPageUsers.toString()} onValueChange={(value) => {
+                    setItemsPerPageUsers(parseInt(value));
+                    setCurrentPageUsers(1);
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 filas</SelectItem>
+                      <SelectItem value="10">10 filas</SelectItem>
+                      <SelectItem value="20">20 filas</SelectItem>
+                      <SelectItem value="50">50 filas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1850,6 +1943,36 @@ export default function AdminDashboard() {
             </CardHeader>
             
             <CardContent>
+              {/* Apartments Filters */}
+              <div className="mb-4 flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  {/* Spacer for alignment */}
+                </div>
+                <div className="flex gap-2">
+                  <Select value={itemsPerPageApartments.toString()} onValueChange={(value) => {
+                    setItemsPerPageApartments(parseInt(value));
+                    setCurrentPageApartments(1);
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 filas</SelectItem>
+                      <SelectItem value="10">10 filas</SelectItem>
+                      <SelectItem value="20">20 filas</SelectItem>
+                      <SelectItem value="50">50 filas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Apartments Results Info */}
+              <div className="mb-4 flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Mostrando {paginatedApartments.length} de {totalApartments} apartamentos
+                </p>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
