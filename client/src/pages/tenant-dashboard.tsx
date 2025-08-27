@@ -392,7 +392,7 @@ export default function TenantDashboard() {
         </div>
         
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -402,7 +402,7 @@ export default function TenantDashboard() {
                     {formatCurrency(stats.currentBalance)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {stats.currentBalance < 0 ? 'Deuda pendiente' : 'Al día'}
+                    {stats.currentBalance < 0 ? 'Deuda pendiente' : stats.currentBalance > 0 ? 'Saldo a favor por pagos en exceso' : 'Al día'}
                   </p>
                 </div>
                 <div className={`p-3 rounded-lg ${stats.currentBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
@@ -443,25 +443,6 @@ export default function TenantDashboard() {
                 </div>
                 <div className="bg-blue-100 p-3 rounded-lg">
                   <Home className="text-blue-600 w-6 h-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Balance Disponible</p>
-                  <p className={`text-2xl font-bold ${stats.availableBalance > 0 ? 'text-blue-600' : 'text-gray-600'}`}>
-                    {formatCurrency(stats.availableBalance || 0)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {stats.availableBalance > 0 ? 'Por pagos en exceso' : 'Sin crédito disponible'}
-                  </p>
-                </div>
-                <div className={`p-3 rounded-lg ${stats.availableBalance > 0 ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  <CreditCard className={`w-6 h-6 ${stats.availableBalance > 0 ? 'text-blue-600' : 'text-gray-600'}`} />
                 </div>
               </div>
             </CardContent>
