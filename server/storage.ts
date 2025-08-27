@@ -26,6 +26,7 @@ export interface IStorage {
   getUsersWithApartments(): Promise<UserWithApartment[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
+  updateUserBalance(userId: string, balanceChange: number): Promise<User>;
   
   // Auth operations
   authenticateUser(email: string, password: string): Promise<UserWithApartment | null>;
@@ -129,6 +130,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ ...userData, updatedAt: new Date() })
       .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserBalance(userId: string, balanceChange: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        balance: sql`${users.balance} + ${balanceChange}`,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
       .returning();
     return user;
   }

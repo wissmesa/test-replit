@@ -293,17 +293,22 @@ export default function TenantDashboard() {
   };
 
   const calculateStats = () => {
-    if (!pagos) return { currentBalance: 0, paidPayments: 0, monthlyFee: 0 };
+    if (!pagos || !user) return { currentBalance: 0, paidPayments: 0, monthlyFee: 0, availableBalance: 0 };
     
     const pendingPayments = pagos.filter(p => p.estado === 'pendiente');
     const paidPayments = pagos.filter(p => p.estado === 'pagado');
-    const currentBalance = pendingPayments.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    const pendingDebt = pendingPayments.reduce((sum, p) => sum + parseFloat(p.monto), 0);
     const monthlyFee = pagos.length > 0 ? parseFloat(pagos[0].monto) : 0;
     
+    // Calculate net balance: user's balance minus pending debt
+    const userBalance = parseFloat(user.balance || '0');
+    const netBalance = userBalance - pendingDebt;
+    
     return {
-      currentBalance: -currentBalance, // Negative because it's a debt
+      currentBalance: netBalance,
       paidPayments: paidPayments.length,
       monthlyFee,
+      availableBalance: userBalance, // User's positive balance from overpayments
     };
   };
 
@@ -387,7 +392,7 @@ export default function TenantDashboard() {
         </div>
         
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -438,6 +443,25 @@ export default function TenantDashboard() {
                 </div>
                 <div className="bg-blue-100 p-3 rounded-lg">
                   <Home className="text-blue-600 w-6 h-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Balance Disponible</p>
+                  <p className={`text-2xl font-bold ${stats.availableBalance > 0 ? 'text-blue-600' : 'text-gray-600'}`}>
+                    {formatCurrency(stats.availableBalance || 0)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stats.availableBalance > 0 ? 'Por pagos en exceso' : 'Sin crédito disponible'}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-lg ${stats.availableBalance > 0 ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                  <CreditCard className={`w-6 h-6 ${stats.availableBalance > 0 ? 'text-blue-600' : 'text-gray-600'}`} />
                 </div>
               </div>
             </CardContent>

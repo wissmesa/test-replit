@@ -46,6 +46,7 @@ export const users: any = pgTable("users", {
   tipoUsuario: varchar("tipo_usuario").notNull().$type<'admin' | 'propietario'>(),
   tipoIdentificacion: varchar("tipo_identificacion").notNull().$type<'pasaporte' | 'cedula' | 'rif'>(),
   idApartamento: integer("id_apartamento").references(() => apartments.id),
+  balance: decimal("balance", { precision: 10, scale: 2 }).notNull().default('0.00'), // Balance disponible por pagos en exceso
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

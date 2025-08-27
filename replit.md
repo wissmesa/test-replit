@@ -4,6 +4,19 @@
 
 This is a full-stack condominium management application built with React, Express.js, and PostgreSQL. The system provides role-based access for administrators and tenants to manage apartments, users, and payment records. It features a modern UI built with shadcn/ui components, comprehensive authentication through Replit Auth, and a robust database layer using Drizzle ORM.
 
+## Recent Changes (August 27, 2025)
+
+✅ **User Balance System**: Implemented automatic balance management for overpayments
+- Added `balance` field to users table to track credit from excess payments
+- When admin approves a payment that exceeds the required amount, excess is added to user balance
+- Balance is displayed in tenant dashboard showing available credit
+- Balance calculation considers both user credit and pending debts for net balance
+
+✅ **Exchange Rate Optimization**: Modified BCV service to only store USD rates
+- Removed unnecessary currency storage (EUR, CNY, TRY, RUB) to focus only on USD
+- Cleaned existing database records to remove non-USD currencies
+- Improved synchronization efficiency by processing only relevant currency
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

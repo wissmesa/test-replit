@@ -604,6 +604,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Datos inválidos", errors: result.error.issues });
       }
 
+      // Get current payment to check for balance logic
+      const currentPago = await storage.getPago(pagoId);
+      if (!currentPago) {
+        return res.status(404).json({ message: "Pago no encontrado" });
+      }
+
+      // Check if payment is being marked as paid (approved)
+      const isBeingMarkedAsPaid = result.data.estado === 'pagado' && currentPago.estado === 'en_revision';
+      
+      if (isBeingMarkedAsPaid && currentPago.montoBs && currentPago.tasaCambio) {
+        // Calculate the actual amount paid vs required amount
+        const paidAmountBs = parseFloat(currentPago.montoBs);
+        const exchangeRate = parseFloat(currentPago.tasaCambio);
+        const paidAmountUsd = paidAmountBs / exchangeRate;
+        
+        // Get the original required amount for this payment period
+        // For this we need to look at the apartment's alicuota
+        const originalAmountUsd = parseFloat(currentPago.apartment.alicuota);
+        
+        // If paid more than required, add the excess to user balance
+        const tolerance = 0.01; // $0.01 tolerance for rounding
+        if (paidAmountUsd > originalAmountUsd + tolerance) {
+          const excessAmount = paidAmountUsd - originalAmountUsd;
+          console.log(`Payment excess detected: $${excessAmount.toFixed(2)} will be added to user balance`);
+          
+          // Add excess to user balance
+          if (currentPago.idUsuario) {
+            await storage.updateUserBalance(currentPago.idUsuario, excessAmount);
+          }
+          
+          // Update the payment amount to reflect only the required amount
+          result.data.monto = originalAmountUsd.toFixed(2);
+          
+          console.log(`Added $${excessAmount.toFixed(2)} to user ${currentPago.idUsuario} balance`);
+        }
+      }
+
       const pago = await storage.updatePago(pagoId, result.data);
       res.json(pago);
     } catch (error) {
