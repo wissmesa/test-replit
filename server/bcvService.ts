@@ -81,7 +81,7 @@ export class BCVService {
                   break;
                 }
               }
-              currentElement = currentElement.nextElementSibling;
+              currentElement = currentElement.nextElementSibling as HTMLElement;
               if (!currentElement) break;
             }
           }
