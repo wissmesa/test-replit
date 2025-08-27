@@ -1,5 +1,5 @@
 interface TasaBCV {
-  moneda: 'USD' | 'EUR' | 'CNY' | 'TRY' | 'RUB';
+  moneda: 'USD';
   valor: string;
   fecha: Date;
 }
@@ -29,41 +29,11 @@ export class BCVService {
       const tasas: TasaBCV[] = [];
       const fechaActual = new Date();
 
-      // Procesar la respuesta de la API
+      // Procesar la respuesta de la API - Solo USD
       if (data.dollar && typeof data.dollar === 'number') {
         tasas.push({
           moneda: 'USD',
           valor: data.dollar.toString(),
-          fecha: fechaActual,
-        });
-      }
-
-      // Si la API solo devuelve USD, agregar las otras monedas con valores estimados
-      if (tasas.length > 0) {
-        const usdRate = parseFloat(data.dollar.toString());
-        
-        // Calcular tasas aproximadas basadas en el USD
-        tasas.push({
-          moneda: 'EUR',
-          valor: (usdRate * 1.17).toFixed(8), // EUR típicamente 17% más alto que USD
-          fecha: fechaActual,
-        });
-        
-        tasas.push({
-          moneda: 'CNY',
-          valor: (usdRate * 0.14).toFixed(8), // CNY típicamente 14% del USD
-          fecha: fechaActual,
-        });
-        
-        tasas.push({
-          moneda: 'TRY',
-          valor: (usdRate * 0.024).toFixed(8), // TRY típicamente 2.4% del USD
-          fecha: fechaActual,
-        });
-        
-        tasas.push({
-          moneda: 'RUB',
-          valor: (usdRate * 0.012).toFixed(8), // RUB típicamente 1.2% del USD
           fecha: fechaActual,
         });
       }
@@ -74,33 +44,13 @@ export class BCVService {
     } catch (error) {
       console.error('Error obteniendo tasas del BCV:', error);
       
-      // Como fallback, devolver tasas actualizadas basadas en la información más reciente del BCV
+      // Como fallback, devolver solo USD basado en la información más reciente del BCV
       return [
         {
           moneda: 'USD',
           valor: '144.37320000',
           fecha: new Date(),
-        },
-        {
-          moneda: 'EUR',
-          valor: '168.91664400',
-          fecha: new Date(),
-        },
-        {
-          moneda: 'CNY',
-          valor: '20.21224800',
-          fecha: new Date(),
-        },
-        {
-          moneda: 'TRY',
-          valor: '3.46494880',
-          fecha: new Date(),
-        },
-        {
-          moneda: 'RUB',
-          valor: '1.73247840',
-          fecha: new Date(),
-        },
+        }
       ];
     }
   }
