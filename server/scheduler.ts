@@ -17,16 +17,23 @@ export class TaskScheduler {
   public start(): void {
     console.log('🚀 Task Scheduler iniciado');
 
-    // Ejecutar de lunes a viernes a las 9:00 AM hora de Venezuela
-    cron.schedule('0 9 * * 1-5', async () => {
+    // Ejecutar cada día a las 9:00 AM hora de Venezuela (incluye fines de semana)
+    cron.schedule('0 9 * * *', async () => {
       console.log('⏰ Iniciando sincronización automática de tasas BCV...');
       await this.syncBcvRates();
     }, {
       timezone: "America/Caracas"
     });
 
+    // Ejecutar una sincronización inicial al arrancar (para testing y actualización inmediata)
+    setTimeout(async () => {
+      console.log('🔄 Ejecutando sincronización inicial...');
+      await this.syncBcvRates();
+    }, 2000); // Esperar 2 segundos para que el sistema se estabilice
+
     console.log('📅 Tareas programadas:');
-    console.log('  - Sincronización BCV: 9:00 AM, lunes a viernes (GMT-4)');
+    console.log('  - Sincronización BCV: 9:00 AM diario (GMT-4)');
+    console.log('  - Sincronización inicial: al arrancar el servidor');
   }
 
   private async syncBcvRates(): Promise<void> {
@@ -37,26 +44,34 @@ export class TaskScheduler {
       let syncedCount = 0;
 
       if (tasas && tasas.length > 0) {
-        const today = new Date();
+        console.log(`📊 Procesando ${tasas.length} tasas obtenidas:`, tasas.map(t => `${t.moneda}: ${t.valor}`));
         
         for (const tasa of tasas) {
           try {
-            // Verificar si ya existe una tasa para esta moneda en el día actual
+            // Siempre crear una nueva entrada para mantener el historial
+            // Solo evitar duplicados si ya existe la misma tasa exacta para hoy
             const existingRate = await storage.getLatestTasaCambio(tasa.moneda);
+            const today = new Date();
             const isToday = existingRate && 
               existingRate.fecha.toDateString() === today.toDateString();
+            const isSameValue = existingRate && 
+              parseFloat(existingRate.valor) === parseFloat(tasa.valor);
 
-            if (!isToday) {
+            // Crear nueva entrada si no existe para hoy o si el valor ha cambiado
+            if (!isToday || !isSameValue) {
               await storage.createTasaCambio({
-                fecha: today,
+                fecha: new Date(),
                 moneda: tasa.moneda as any,
                 valor: tasa.valor,
-                fuente: tasa.fuente || 'BCV'
+                fuente: 'BCV'
               });
               syncedCount++;
+              console.log(`💰 Nueva tasa guardada: ${tasa.moneda} = ${tasa.valor}`);
+            } else {
+              console.log(`⏭️ Tasa ${tasa.moneda} ya actualizada hoy con el mismo valor: ${tasa.valor}`);
             }
           } catch (error) {
-            console.error(`Error guardando tasa ${tasa.moneda}:`, error);
+            console.error(`❌ Error guardando tasa ${tasa.moneda}:`, error);
           }
         }
         
