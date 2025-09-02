@@ -1,5 +1,5 @@
-const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = require('docx');
-const fs = require('fs');
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from 'docx';
+import fs from 'fs';
 
 const doc = new Document({
   sections: [{
