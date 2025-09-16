@@ -295,20 +295,49 @@ export default function TenantDashboard() {
   const calculateStats = () => {
     if (!pagos || !user) return { currentBalance: 0, paidPayments: 0, monthlyFee: 0, availableBalance: 0 };
     
-    const pendingPayments = pagos.filter(p => p.estado === 'pendiente');
     const paidPayments = pagos.filter(p => p.estado === 'pagado');
-    const pendingDebt = pendingPayments.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    const pendingPayments = pagos.filter(p => p.estado === 'pendiente');
+    const vencidoPayments = pagos.filter(p => p.estado === 'vencido');
+    const revisionPayments = pagos.filter(p => p.estado === 'en_revision');
     const monthlyFee = pagos.length > 0 ? parseFloat(pagos[0].monto) : 0;
     
-    // Calculate net balance: user's balance minus pending debt
+    // Calculate total expected amount (what user should have paid)
+    const totalExpected = pagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    
+    // Calculate total actually paid
+    let totalPaid = 0;
+    
+    // For paid payments, use actual amount paid (montoBs converted to USD)
+    paidPayments.forEach(p => {
+      if (p.montoBs && p.tasaCambio) {
+        // Convert Bs to USD using the exchange rate used for that payment
+        const paidAmountUsd = parseFloat(p.montoBs) / parseFloat(p.tasaCambio);
+        totalPaid += paidAmountUsd;
+      } else {
+        // Fallback to the recorded monto if no specific payment info
+        totalPaid += parseFloat(p.monto);
+      }
+    });
+    
+    // For payments in revision, consider them as paid with the reported amount
+    revisionPayments.forEach(p => {
+      if (p.montoBs && p.tasaCambio) {
+        const paidAmountUsd = parseFloat(p.montoBs) / parseFloat(p.tasaCambio);
+        totalPaid += paidAmountUsd;
+      }
+    });
+    
+    // Calculate balance: what user paid vs what was expected
+    const actualBalance = totalPaid - totalExpected;
+    
+    // User balance from system (legacy overpayment tracking)
     const userBalance = parseFloat(user.balance || '0');
-    const netBalance = userBalance - pendingDebt;
     
     return {
-      currentBalance: netBalance,
+      currentBalance: actualBalance,
       paidPayments: paidPayments.length,
       monthlyFee,
-      availableBalance: userBalance, // User's positive balance from overpayments
+      availableBalance: userBalance, // Legacy balance for reference
     };
   };
 
