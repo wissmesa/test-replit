@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import type { UserWithApartment, Apartment, PagoWithRelations, ApartmentWithUser } from "@shared/schema";
+import type {
+  UserWithApartment,
+  Apartment,
+  PagoWithRelations,
+  ApartmentWithUser,
+} from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,17 +16,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Building, 
-  Users, 
-  CreditCard, 
-  DollarSign, 
+import {
+  Building,
+  Users,
+  CreditCard,
+  DollarSign,
   TrendingUp,
   Search,
   Download,
@@ -35,7 +60,7 @@ import {
   Edit,
   Trash2,
   FileText,
-  Eye
+  Eye,
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -57,14 +82,14 @@ const apartmentSchema = z.object({
   numero: z.string().min(1, "Número de apartamento requerido"),
   piso: z.number().min(1, "Piso debe ser mayor a 0"),
   alicuota: z.string().min(1, "Alícuota requerida"),
-  idUsuario: z.string().optional()
+  idUsuario: z.string().optional(),
 });
 
 const editApartmentSchema = z.object({
   numero: z.string().min(1, "Número de apartamento requerido"),
   piso: z.number().min(1, "Piso debe ser mayor a 0"),
   alicuota: z.string().min(1, "Alícuota requerida"),
-  idUsuario: z.string().optional()
+  idUsuario: z.string().optional(),
 });
 
 const pagoSchema = z.object({
@@ -74,7 +99,7 @@ const pagoSchema = z.object({
   fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
   concepto: z.string().min(1, "Concepto requerido"),
   metodoPago: z.string().optional(),
-  comprobanteUrl: z.string().optional()
+  comprobanteUrl: z.string().optional(),
 });
 
 const editPagoSchema = z.object({
@@ -82,17 +107,15 @@ const editPagoSchema = z.object({
   fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
   concepto: z.string().min(1, "Concepto requerido"),
   metodoPago: z.string().optional(),
-  estado: z.enum(["pendiente", "pagado", "vencido", "en_revision"]).optional()
+  estado: z.enum(["pendiente", "pagado", "vencido", "en_revision"]).optional(),
 });
 
 const bulkPagoSchema = z.object({
   montoTotal: z.string().min(1, "Monto total requerido"),
   concepto: z.string().min(1, "Concepto requerido"),
   fechaVencimiento: z.string().min(1, "Fecha de vencimiento requerida"),
-  metodoPago: z.string().optional()
+  metodoPago: z.string().optional(),
 });
-
-
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ApartmentFormData = z.infer<typeof apartmentSchema>;
@@ -100,7 +123,6 @@ type EditApartmentFormData = z.infer<typeof editApartmentSchema>;
 type PagoFormData = z.infer<typeof pagoSchema>;
 type EditPagoFormData = z.infer<typeof editPagoSchema>;
 type BulkPagoFormData = z.infer<typeof bulkPagoSchema>;
-
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -111,42 +133,52 @@ export default function AdminDashboard() {
   const [showApartmentDialog, setShowApartmentDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showEditApartmentDialog, setShowEditApartmentDialog] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserWithApartment | null>(null);
-  const [editingUser, setEditingUser] = useState<UserWithApartment | null>(null);
-  const [editingApartment, setEditingApartment] = useState<ApartmentWithUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithApartment | null>(
+    null,
+  );
+  const [editingUser, setEditingUser] = useState<UserWithApartment | null>(
+    null,
+  );
+  const [editingApartment, setEditingApartment] =
+    useState<ApartmentWithUser | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     apartment: "all",
     status: "all",
-    month: ""
+    month: "",
   });
   const [showPagoDialog, setShowPagoDialog] = useState(false);
   const [showEditPagoDialog, setShowEditPagoDialog] = useState(false);
   const [showBulkPagoDialog, setShowBulkPagoDialog] = useState(false);
 
-  const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(null);
+  const [editingPago, setEditingPago] = useState<PagoWithRelations | null>(
+    null,
+  );
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string>("");
   const [showHistorialDialog, setShowHistorialDialog] = useState(false);
-  const [selectedApartmentForHistory, setSelectedApartmentForHistory] = useState<ApartmentWithUser | null>(null);
-  const [apartmentHistory, setApartmentHistory] = useState<PagoWithRelations[] | null>(null);
+  const [selectedApartmentForHistory, setSelectedApartmentForHistory] =
+    useState<ApartmentWithUser | null>(null);
+  const [apartmentHistory, setApartmentHistory] = useState<
+    PagoWithRelations[] | null
+  >(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  
+
   // Pagination states for apartments
   const [currentPageApartments, setCurrentPageApartments] = useState(1);
   const [itemsPerPageApartments, setItemsPerPageApartments] = useState(10);
-  
+
   // Pagination states for users
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const [itemsPerPageUsers, setItemsPerPageUsers] = useState(10);
-  
+
   // Pagination states for payments
   const [currentPagePayments, setCurrentPagePayments] = useState(1);
   const [itemsPerPagePayments, setItemsPerPagePayments] = useState(10);
-  
+
   // Filter states for users
   const [usersFilters, setUsersFilters] = useState({
     search: "",
-    tipoUsuario: "all"
+    tipoUsuario: "all",
   });
 
   const registerForm = useForm<RegisterFormData>({
@@ -171,12 +203,11 @@ export default function AdminDashboard() {
       numero: "",
       piso: 1,
       alicuota: "",
-      idUsuario: "unassigned"
+      idUsuario: "unassigned",
     },
   });
 
-
-  const editUserForm = useForm<Omit<RegisterFormData, 'password'>>({
+  const editUserForm = useForm<Omit<RegisterFormData, "password">>({
     resolver: zodResolver(registerSchema.omit({ password: true })),
     defaultValues: {
       primerNombre: "",
@@ -187,8 +218,8 @@ export default function AdminDashboard() {
       correo: "",
       identificacion: "",
       tipoIdentificacion: "cedula",
-      tipoUsuario: "propietario"
-    }
+      tipoUsuario: "propietario",
+    },
   });
 
   const editApartmentForm = useForm<EditApartmentFormData>({
@@ -197,8 +228,8 @@ export default function AdminDashboard() {
       numero: "",
       piso: 1,
       alicuota: "",
-      idUsuario: "unassigned"
-    }
+      idUsuario: "unassigned",
+    },
   });
 
   const pagoForm = useForm<PagoFormData>({
@@ -210,8 +241,8 @@ export default function AdminDashboard() {
       fechaVencimiento: "",
       concepto: "",
       metodoPago: "sin_especificar",
-      comprobanteUrl: ""
-    }
+      comprobanteUrl: "",
+    },
   });
 
   const editPagoForm = useForm<EditPagoFormData>({
@@ -221,8 +252,8 @@ export default function AdminDashboard() {
       fechaVencimiento: "",
       concepto: "",
       metodoPago: "sin_especificar",
-      estado: "pendiente"
-    }
+      estado: "pendiente",
+    },
   });
 
   const bulkPagoForm = useForm<BulkPagoFormData>({
@@ -231,15 +262,13 @@ export default function AdminDashboard() {
       montoTotal: "",
       concepto: "",
       fechaVencimiento: "",
-      metodoPago: "sin_especificar"
-    }
+      metodoPago: "sin_especificar",
+    },
   });
-
-
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
-    if (!authLoading && (!user || user.tipoUsuario !== 'admin')) {
+    if (!authLoading && (!user || user.tipoUsuario !== "admin")) {
       toast({
         title: "No autorizado",
         description: "Redirigiendo al login...",
@@ -255,40 +284,50 @@ export default function AdminDashboard() {
   // Fetch stats
   const { data: stats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ["/api/stats"],
-    enabled: !!user && user.tipoUsuario === 'admin',
+    enabled: !!user && user.tipoUsuario === "admin",
   });
 
   // Fetch payments
-  const { data: pagos, isLoading: pagosLoading } = useQuery<PagoWithRelations[]>({
+  const { data: pagos, isLoading: pagosLoading } = useQuery<
+    PagoWithRelations[]
+  >({
     queryKey: ["/api/pagos"],
-    enabled: !!user && user.tipoUsuario === 'admin',
+    enabled: !!user && user.tipoUsuario === "admin",
   });
 
   // Fetch apartments
   const { data: apartments } = useQuery<ApartmentWithUser[]>({
     queryKey: ["/api/apartments"],
-    enabled: !!user && user.tipoUsuario === 'admin',
+    enabled: !!user && user.tipoUsuario === "admin",
   });
 
   // Fetch users
-  const { data: users, isLoading: usersLoading } = useQuery<UserWithApartment[]>({
+  const { data: users, isLoading: usersLoading } = useQuery<
+    UserWithApartment[]
+  >({
     queryKey: ["/api/users"],
-    enabled: !!user && user.tipoUsuario === 'admin',
+    enabled: !!user && user.tipoUsuario === "admin",
   });
 
   // Pagination logic for apartments
   const totalApartments = apartments?.length || 0;
-  const totalPagesApartments = Math.ceil(totalApartments / itemsPerPageApartments);
-  const startIndexApartments = (currentPageApartments - 1) * itemsPerPageApartments;
+  const totalPagesApartments = Math.ceil(
+    totalApartments / itemsPerPageApartments,
+  );
+  const startIndexApartments =
+    (currentPageApartments - 1) * itemsPerPageApartments;
   const endIndexApartments = startIndexApartments + itemsPerPageApartments;
-  const paginatedApartments = apartments?.slice(startIndexApartments, endIndexApartments) || [];
+  const paginatedApartments =
+    apartments?.slice(startIndexApartments, endIndexApartments) || [];
 
   const handlePreviousPageApartments = () => {
-    setCurrentPageApartments(prev => Math.max(prev - 1, 1));
+    setCurrentPageApartments((prev) => Math.max(prev - 1, 1));
   };
 
   const handleNextPageApartments = () => {
-    setCurrentPageApartments(prev => Math.min(prev + 1, totalPagesApartments));
+    setCurrentPageApartments((prev) =>
+      Math.min(prev + 1, totalPagesApartments),
+    );
   };
 
   const handlePageClickApartments = (page: number) => {
@@ -296,17 +335,24 @@ export default function AdminDashboard() {
   };
 
   // Pagination logic for users
-  const filteredUsers = users?.filter(user => {
-    const matchesSearch = 
-      `${user.primerNombre} ${user.segundoNombre} ${user.primerApellido} ${user.segundoApellido}`.toLowerCase().includes(usersFilters.search.toLowerCase()) ||
-      user.correo.toLowerCase().includes(usersFilters.search.toLowerCase()) ||
-      user.identificacion.toLowerCase().includes(usersFilters.search.toLowerCase());
-    
-    const matchesTipo = usersFilters.tipoUsuario === "all" || user.tipoUsuario === usersFilters.tipoUsuario;
-    
-    return matchesSearch && matchesTipo;
-  }) || [];
-  
+  const filteredUsers =
+    users?.filter((user) => {
+      const matchesSearch =
+        `${user.primerNombre} ${user.segundoNombre} ${user.primerApellido} ${user.segundoApellido}`
+          .toLowerCase()
+          .includes(usersFilters.search.toLowerCase()) ||
+        user.correo.toLowerCase().includes(usersFilters.search.toLowerCase()) ||
+        user.identificacion
+          .toLowerCase()
+          .includes(usersFilters.search.toLowerCase());
+
+      const matchesTipo =
+        usersFilters.tipoUsuario === "all" ||
+        user.tipoUsuario === usersFilters.tipoUsuario;
+
+      return matchesSearch && matchesTipo;
+    }) || [];
+
   const totalUsers = filteredUsers.length;
   const totalPagesUsers = Math.ceil(totalUsers / itemsPerPageUsers);
   const startIndexUsers = (currentPageUsers - 1) * itemsPerPageUsers;
@@ -314,11 +360,11 @@ export default function AdminDashboard() {
   const paginatedUsers = filteredUsers.slice(startIndexUsers, endIndexUsers);
 
   const handlePreviousPageUsers = () => {
-    setCurrentPageUsers(prev => Math.max(prev - 1, 1));
+    setCurrentPageUsers((prev) => Math.max(prev - 1, 1));
   };
 
   const handleNextPageUsers = () => {
-    setCurrentPageUsers(prev => Math.min(prev + 1, totalPagesUsers));
+    setCurrentPageUsers((prev) => Math.min(prev + 1, totalPagesUsers));
   };
 
   const handlePageClickUsers = (page: number) => {
@@ -328,8 +374,8 @@ export default function AdminDashboard() {
   // Mark payment as paid mutation
   const markAsPaidMutation = useMutation({
     mutationFn: async (pagoId: string) => {
-      await apiRequest('PUT', `/api/pagos/${pagoId}`, {
-        estado: 'pagado',
+      await apiRequest("PUT", `/api/pagos/${pagoId}`, {
+        estado: "pagado",
         fechaPago: new Date().toISOString(),
       });
     },
@@ -362,8 +408,14 @@ export default function AdminDashboard() {
   });
 
   const editPagoMutation = useMutation({
-    mutationFn: async ({ pagoId, data }: { pagoId: string; data: EditPagoFormData }) => {
-      await apiRequest('PUT', `/api/pagos/${pagoId}`, data);
+    mutationFn: async ({
+      pagoId,
+      data,
+    }: {
+      pagoId: string;
+      data: EditPagoFormData;
+    }) => {
+      await apiRequest("PUT", `/api/pagos/${pagoId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
@@ -397,9 +449,9 @@ export default function AdminDashboard() {
 
   const bulkPagoMutation = useMutation({
     mutationFn: async (data: BulkPagoFormData) => {
-      const response = await apiRequest('POST', '/api/pagos/generate-bulk', {
+      const response = await apiRequest("POST", "/api/pagos/generate-bulk", {
         ...data,
-        fechaVencimiento: new Date(data.fechaVencimiento).toISOString()
+        fechaVencimiento: new Date(data.fechaVencimiento).toISOString(),
       });
       return response.json();
     },
@@ -427,7 +479,7 @@ export default function AdminDashboard() {
       }
       toast({
         title: "Error",
-        description: "No se pudieron generar los pagos en masa",
+        description: "No se pudieron generar los recibos",
         variant: "destructive",
       });
     },
@@ -435,7 +487,7 @@ export default function AdminDashboard() {
 
   const deletePagoMutation = useMutation({
     mutationFn: async (pagoId: string) => {
-      await apiRequest('DELETE', `/api/pagos/${pagoId}`);
+      await apiRequest("DELETE", `/api/pagos/${pagoId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
@@ -496,7 +548,7 @@ export default function AdminDashboard() {
       const response = await apiRequest("POST", "/api/apartments", {
         ...data,
         piso: Number(data.piso),
-        alicuota: data.alicuota
+        alicuota: data.alicuota,
       });
       return response.json();
     },
@@ -520,10 +572,9 @@ export default function AdminDashboard() {
     },
   });
 
-
   // Edit user mutation
   const editUserMutation = useMutation({
-    mutationFn: async (data: Omit<RegisterFormData, 'password'>) => {
+    mutationFn: async (data: Omit<RegisterFormData, "password">) => {
       if (!editingUser) throw new Error("No user selected for editing");
       await apiRequest("PUT", `/api/users/${editingUser.id}`, data);
     },
@@ -541,7 +592,8 @@ export default function AdminDashboard() {
     onError: (error: any) => {
       toast({
         title: "Error al actualizar usuario",
-        description: error.message || "No se pudieron actualizar los datos del usuario",
+        description:
+          error.message || "No se pudieron actualizar los datos del usuario",
         variant: "destructive",
       });
     },
@@ -590,22 +642,22 @@ export default function AdminDashboard() {
     },
   });
 
-
-
   // Edit apartment mutation
   const editApartmentMutation = useMutation({
     mutationFn: async (data: EditApartmentFormData) => {
-      if (!editingApartment) throw new Error("No apartment selected for editing");
+      if (!editingApartment)
+        throw new Error("No apartment selected for editing");
       await apiRequest("PUT", `/api/apartments/${editingApartment.id}`, {
         ...data,
         piso: Number(data.piso),
-        alicuota: data.alicuota
+        alicuota: data.alicuota,
       });
     },
     onSuccess: () => {
       toast({
         title: "Apartamento actualizado",
-        description: "Los datos del apartamento han sido actualizados exitosamente",
+        description:
+          "Los datos del apartamento han sido actualizados exitosamente",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/apartments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -617,7 +669,9 @@ export default function AdminDashboard() {
     onError: (error: any) => {
       toast({
         title: "Error al actualizar apartamento",
-        description: error.message || "No se pudieron actualizar los datos del apartamento",
+        description:
+          error.message ||
+          "No se pudieron actualizar los datos del apartamento",
         variant: "destructive",
       });
     },
@@ -629,7 +683,7 @@ export default function AdminDashboard() {
       const response = await apiRequest("POST", "/api/pagos", {
         ...data,
         idApartamento: Number(data.idApartamento),
-        monto: data.monto
+        monto: data.monto,
       });
       return response.json();
     },
@@ -655,7 +709,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await apiRequest('POST', '/api/auth/logout', {});
+      await apiRequest("POST", "/api/auth/logout", {});
       queryClient.clear();
       window.location.href = "/";
     } catch (error) {
@@ -671,12 +725,10 @@ export default function AdminDashboard() {
   const onCreateApartment = async (data: ApartmentFormData) => {
     const submitData = {
       ...data,
-      idUsuario: data.idUsuario === "unassigned" ? undefined : data.idUsuario
+      idUsuario: data.idUsuario === "unassigned" ? undefined : data.idUsuario,
     };
     createApartmentMutation.mutate(submitData);
   };
-
-
 
   const handleEditUser = (user: UserWithApartment) => {
     setEditingUser(user);
@@ -689,13 +741,17 @@ export default function AdminDashboard() {
       correo: user.correo,
       identificacion: user.identificacion,
       tipoIdentificacion: user.tipoIdentificacion,
-      tipoUsuario: user.tipoUsuario
+      tipoUsuario: user.tipoUsuario,
     });
     setShowEditUserDialog(true);
   };
 
   const handleDeleteUser = (user: UserWithApartment) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${user.primerNombre} ${user.primerApellido}?`)) {
+    if (
+      window.confirm(
+        `¿Estás seguro de que deseas eliminar al usuario ${user.primerNombre} ${user.primerApellido}?`,
+      )
+    ) {
       deleteUserMutation.mutate(user.id);
     }
   };
@@ -706,12 +762,12 @@ export default function AdminDashboard() {
       numero: apartment.numero,
       piso: apartment.piso,
       alicuota: apartment.alicuota,
-      idUsuario: apartment.user?.id || "unassigned"
+      idUsuario: apartment.user?.id || "unassigned",
     });
     setShowEditApartmentDialog(true);
   };
 
-  const onEditUser = async (data: Omit<RegisterFormData, 'password'>) => {
+  const onEditUser = async (data: Omit<RegisterFormData, "password">) => {
     editUserMutation.mutate(data);
   };
 
@@ -719,7 +775,7 @@ export default function AdminDashboard() {
     const submitData = {
       ...data,
       idUsuario: data.idUsuario === "unassigned" ? undefined : data.idUsuario,
-      id: editingApartment?.id
+      id: editingApartment?.id,
     };
     editApartmentMutation.mutate(submitData);
   };
@@ -729,7 +785,7 @@ export default function AdminDashboard() {
       ...data,
       monto: data.monto, // Keep as string for decimal field
       fechaVencimiento: data.fechaVencimiento, // Send as string, schema will transform to Date
-      comprobanteUrl: uploadedReceiptUrl
+      comprobanteUrl: uploadedReceiptUrl,
     });
   };
 
@@ -746,14 +802,14 @@ export default function AdminDashboard() {
   const handleUploadComplete = async (result: any) => {
     if (result.successful && result.successful[0]) {
       const uploadUrl = result.successful[0].uploadURL;
-      
+
       try {
         // Set ACL policy for the uploaded file
         const response = await apiRequest("PUT", "/api/pagos/set-receipt-acl", {
-          receiptUrl: uploadUrl
+          receiptUrl: uploadUrl,
         });
         const aclResult = await response.json();
-        
+
         setUploadedReceiptUrl(aclResult.objectPath);
         toast({
           title: "Comprobante subido",
@@ -765,7 +821,8 @@ export default function AdminDashboard() {
         setUploadedReceiptUrl(uploadUrl);
         toast({
           title: "Comprobante subido",
-          description: "El archivo se ha subido, pero puede haber problemas de permisos",
+          description:
+            "El archivo se ha subido, pero puede haber problemas de permisos",
           variant: "destructive",
         });
       }
@@ -776,20 +833,22 @@ export default function AdminDashboard() {
     setEditingPago(pago);
     editPagoForm.reset({
       monto: pago.monto,
-      fechaVencimiento: new Date(pago.fechaVencimiento).toISOString().split('T')[0],
+      fechaVencimiento: new Date(pago.fechaVencimiento)
+        .toISOString()
+        .split("T")[0],
       concepto: pago.concepto,
       metodoPago: pago.metodoPago || "sin_especificar",
-      estado: pago.estado as "pendiente" | "pagado" | "vencido"
+      estado: pago.estado as "pendiente" | "pagado" | "vencido",
     });
     setShowEditPagoDialog(true);
   };
 
   const handleViewDocument = (comprobanteUrl: string) => {
     // Open document in a new tab using the internal server route
-    const documentUrl = comprobanteUrl.startsWith('/objects/') 
-      ? comprobanteUrl 
+    const documentUrl = comprobanteUrl.startsWith("/objects/")
+      ? comprobanteUrl
       : comprobanteUrl;
-    window.open(documentUrl, '_blank');
+    window.open(documentUrl, "_blank");
   };
 
   const handleViewApartmentHistory = async (apartment: ApartmentWithUser) => {
@@ -797,7 +856,7 @@ export default function AdminDashboard() {
     setShowHistorialDialog(true);
     setHistoryLoading(true);
     setApartmentHistory(null);
-    
+
     try {
       const response = await fetch(`/api/pagos/apartment/${apartment.id}`);
       const historyData = await response.json();
@@ -807,7 +866,7 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "No se pudo cargar el historial del apartamento",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setHistoryLoading(false);
@@ -816,13 +875,13 @@ export default function AdminDashboard() {
 
   const onEditPagoSubmit = (data: EditPagoFormData) => {
     if (!editingPago) return;
-    
+
     editPagoMutation.mutate({
       pagoId: editingPago.id,
       data: {
         ...data,
-        fechaVencimiento: new Date(data.fechaVencimiento).toISOString()
-      }
+        fechaVencimiento: new Date(data.fechaVencimiento).toISOString(),
+      },
     });
   };
 
@@ -831,66 +890,108 @@ export default function AdminDashboard() {
   };
 
   const handleDeletePago = (pago: PagoWithRelations) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar el pago de ${pago.user.primerNombre} ${pago.user.primerApellido} por ${formatCurrency(pago.monto)}?`)) {
+    if (
+      window.confirm(
+        `¿Estás seguro de que deseas eliminar el pago de ${pago.user.primerNombre} ${pago.user.primerApellido} por ${formatCurrency(pago.monto)}?`,
+      )
+    ) {
       deletePagoMutation.mutate(pago.id);
     }
   };
 
-
-
   const getStatusBadge = (estado: string) => {
     switch (estado) {
-      case 'pagado':
-        return <Badge className="bg-green-100 text-green-800 font-medium">Pagado</Badge>;
-      case 'pendiente':
-        return <Badge className="bg-yellow-100 text-yellow-800 font-medium">Pendiente</Badge>;
-      case 'vencido':
-        return <Badge className="bg-red-100 text-red-800 font-medium">Vencido</Badge>;
-      case 'en_revision':
-        return <Badge className="bg-blue-100 text-blue-800 font-medium">En Revisión</Badge>;
+      case "pagado":
+        return (
+          <Badge className="bg-green-100 text-green-800 font-medium">
+            Pagado
+          </Badge>
+        );
+      case "pendiente":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 font-medium">
+            Pendiente
+          </Badge>
+        );
+      case "vencido":
+        return (
+          <Badge className="bg-red-100 text-red-800 font-medium">Vencido</Badge>
+        );
+      case "en_revision":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 font-medium">
+            En Revisión
+          </Badge>
+        );
       default:
-        return <Badge variant="outline" className="font-medium">{estado}</Badge>;
+        return (
+          <Badge variant="outline" className="font-medium">
+            {estado}
+          </Badge>
+        );
     }
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
   };
 
   const formatCurrency = (amount: string | number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(typeof amount === 'string' ? parseFloat(amount) : amount);
+    return new Intl.NumberFormat("es-VE", {
+      style: "currency",
+      currency: "USD",
+    }).format(typeof amount === "string" ? parseFloat(amount) : amount);
   };
 
-  const filteredPagos = pagos?.filter(pago => {
-    if (filters.search && !pago.user.primerNombre.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !pago.user.primerApellido.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
-    }
-    if (filters.apartment && filters.apartment !== "all" && pago.apartment.numero !== filters.apartment) {
-      return false;
-    }
-    if (filters.status && filters.status !== "all" && pago.estado !== filters.status) {
-      return false;
-    }
-    if (filters.month) {
-      const pagoDate = new Date(pago.fechaVencimiento);
-      const filterDate = new Date(filters.month + "-01");
-      if (pagoDate.getMonth() !== filterDate.getMonth() || pagoDate.getFullYear() !== filterDate.getFullYear()) {
+  const filteredPagos =
+    pagos?.filter((pago) => {
+      if (
+        filters.search &&
+        !pago.user.primerNombre
+          .toLowerCase()
+          .includes(filters.search.toLowerCase()) &&
+        !pago.user.primerApellido
+          .toLowerCase()
+          .includes(filters.search.toLowerCase())
+      ) {
         return false;
       }
-    }
-    return true;
-  }) || [];
+      if (
+        filters.apartment &&
+        filters.apartment !== "all" &&
+        pago.apartment.numero !== filters.apartment
+      ) {
+        return false;
+      }
+      if (
+        filters.status &&
+        filters.status !== "all" &&
+        pago.estado !== filters.status
+      ) {
+        return false;
+      }
+      if (filters.month) {
+        const pagoDate = new Date(pago.fechaVencimiento);
+        const filterDate = new Date(filters.month + "-01");
+        if (
+          pagoDate.getMonth() !== filterDate.getMonth() ||
+          pagoDate.getFullYear() !== filterDate.getFullYear()
+        ) {
+          return false;
+        }
+      }
+      return true;
+    }) || [];
 
   // Pagination logic for payments
   const totalPayments = filteredPagos.length;
   const totalPagesPayments = Math.ceil(totalPayments / itemsPerPagePayments);
   const startIndexPayments = (currentPagePayments - 1) * itemsPerPagePayments;
   const endIndexPayments = startIndexPayments + itemsPerPagePayments;
-  const paginatedPagos = filteredPagos.slice(startIndexPayments, endIndexPayments);
+  const paginatedPagos = filteredPagos.slice(
+    startIndexPayments,
+    endIndexPayments,
+  );
 
   const handlePreviousPagePayments = () => {
     if (currentPagePayments > 1) {
@@ -908,7 +1009,7 @@ export default function AdminDashboard() {
     setCurrentPagePayments(pageNumber);
   };
 
-  if (authLoading || !user || user.tipoUsuario !== 'admin') {
+  if (authLoading || !user || user.tipoUsuario !== "admin") {
     return <LoadingModal isOpen={true} message="Cargando..." />;
   }
 
@@ -927,15 +1028,15 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-        
+
         <nav className="p-4">
           <ul className="space-y-2">
             <li>
               <button
                 onClick={() => setActiveNav("dashboard")}
                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  activeNav === "dashboard" 
-                    ? "bg-primary text-white" 
+                  activeNav === "dashboard"
+                    ? "bg-primary text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -947,8 +1048,8 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setActiveNav("payments")}
                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  activeNav === "payments" 
-                    ? "bg-primary text-white" 
+                  activeNav === "payments"
+                    ? "bg-primary text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -960,8 +1061,8 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setActiveNav("apartments")}
                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  activeNav === "apartments" 
-                    ? "bg-primary text-white" 
+                  activeNav === "apartments"
+                    ? "bg-primary text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -973,8 +1074,8 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setActiveNav("users")}
                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  activeNav === "users" 
-                    ? "bg-primary text-white" 
+                  activeNav === "users"
+                    ? "bg-primary text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -984,7 +1085,7 @@ export default function AdminDashboard() {
             </li>
             <li>
               <button
-                onClick={() => window.location.href = "/tasas-cambio"}
+                onClick={() => (window.location.href = "/tasas-cambio")}
                 className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
               >
                 <TrendingUp className="w-5 h-5" />
@@ -993,7 +1094,7 @@ export default function AdminDashboard() {
             </li>
           </ul>
         </nav>
-        
+
         <div className="absolute bottom-4 left-4 right-4">
           <div className="bg-gray-100 rounded-lg p-3">
             <div className="flex items-center space-x-3">
@@ -1009,7 +1110,7 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-600">Administrador</p>
               </div>
             </div>
-            <Button 
+            <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
@@ -1021,7 +1122,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* Main Content */}
       <div className="ml-64 p-6">
         {/* Header */}
@@ -1029,25 +1130,29 @@ export default function AdminDashboard() {
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Dashboard Principal</h1>
-                <p className="text-gray-600 mt-1">Resumen general del condominio</p>
+                <h1 className="text-2xl font-bold text-gray-800">
+                  Dashboard Principal
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Resumen general del condominio
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Último acceso</p>
                 <p className="font-semibold text-gray-800">
-                  {new Date().toLocaleDateString('es-ES', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                  {new Date().toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Stats Cards */}
         {activeNav === "dashboard" && (
           <>
@@ -1056,7 +1161,9 @@ export default function AdminDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Total Apartamentos</p>
+                      <p className="text-sm text-gray-600">
+                        Total Apartamentos
+                      </p>
                       <p className="text-2xl font-bold text-gray-800">
                         {statsLoading ? "..." : stats?.totalApartments || 0}
                       </p>
@@ -1067,12 +1174,14 @@ export default function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Propietarios Activos</p>
+                      <p className="text-sm text-gray-600">
+                        Propietarios Activos
+                      </p>
                       <p className="text-2xl font-bold text-gray-800">
                         {statsLoading ? "..." : stats?.activeUsers || 0}
                       </p>
@@ -1083,7 +1192,7 @@ export default function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -1099,14 +1208,16 @@ export default function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Ingresos del Mes</p>
                       <p className="text-2xl font-bold text-green-600">
-                        {statsLoading ? "..." : formatCurrency(stats?.monthlyIncome || 0)}
+                        {statsLoading
+                          ? "..."
+                          : formatCurrency(stats?.monthlyIncome || 0)}
                       </p>
                     </div>
                     <div className="bg-green-100 p-3 rounded-lg">
@@ -1118,7 +1229,7 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
-        
+
         {/* Payments Management Section */}
         {(activeNav === "dashboard" || activeNav === "payments") && (
           <Card>
@@ -1132,14 +1243,17 @@ export default function AdminDashboard() {
                     <Download className="w-4 h-4 mr-2" />
                     Exportar
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => setShowBulkPagoDialog(true)}
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />
-                    Generar en Masa
+                    Generar recibo
                   </Button>
-                  <Dialog open={showPagoDialog} onOpenChange={setShowPagoDialog}>
+                  <Dialog
+                    open={showPagoDialog}
+                    onOpenChange={setShowPagoDialog}
+                  >
                     <DialogTrigger asChild>
                       <Button>
                         <Plus className="w-4 h-4 mr-2" />
@@ -1150,7 +1264,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               {/* Filters */}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
@@ -1158,21 +1272,28 @@ export default function AdminDashboard() {
                   <Input
                     placeholder="Buscar por propietario..."
                     value={filters.search}
-                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        search: e.target.value,
+                      }))
+                    }
                     className="pl-10"
                   />
                   <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 </div>
                 <Select
                   value={filters.apartment}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, apartment: value }))}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, apartment: value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos los apartamentos" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los apartamentos</SelectItem>
-                    {apartments?.map(apt => (
+                    {apartments?.map((apt) => (
                       <SelectItem key={apt.id} value={apt.numero}>
                         Apt. {apt.numero}
                       </SelectItem>
@@ -1181,7 +1302,9 @@ export default function AdminDashboard() {
                 </Select>
                 <Select
                   value={filters.status}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, status: value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Estado del pago" />
@@ -1198,12 +1321,16 @@ export default function AdminDashboard() {
                   <Input
                     type="month"
                     value={filters.month}
-                    onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value }))}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, month: e.target.value }))
+                    }
                     placeholder="Filtrar por mes/año"
                   />
                   {filters.month && (
                     <button
-                      onClick={() => setFilters(prev => ({ ...prev, month: "" }))}
+                      onClick={() =>
+                        setFilters((prev) => ({ ...prev, month: "" }))
+                      }
                       className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
                       title="Limpiar filtro de fecha"
                     >
@@ -1211,10 +1338,13 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
-                <Select value={itemsPerPagePayments.toString()} onValueChange={(value) => {
+                <Select
+                  value={itemsPerPagePayments.toString()}
+                  onValueChange={(value) => {
                     setItemsPerPagePayments(parseInt(value));
                     setCurrentPagePayments(1);
-                  }}>
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1226,19 +1356,33 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Payments Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Monto</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Fecha Venc.</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Estado</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Comprobante</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Propietario
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Apartamento
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Monto
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Fecha Venc.
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Estado
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Comprobante
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1250,39 +1394,52 @@ export default function AdminDashboard() {
                       </tr>
                     ) : paginatedPagos.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-8 text-gray-500">
+                        <td
+                          colSpan={7}
+                          className="text-center py-8 text-gray-500"
+                        >
                           No hay pagos para mostrar
                         </td>
                       </tr>
                     ) : (
                       paginatedPagos.map((pago) => (
-                        <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <tr
+                          key={pago.id}
+                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-3">
                               <Avatar className="w-8 h-8">
                                 <AvatarFallback className="bg-gray-400 text-white text-sm">
-                                  {pago.user ? 
-                                    getInitials(pago.user.primerNombre, pago.user.primerApellido) : 
-                                    "SA"
-                                  }
+                                  {pago.user
+                                    ? getInitials(
+                                        pago.user.primerNombre,
+                                        pago.user.primerApellido,
+                                      )
+                                    : "SA"}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="font-medium text-gray-800">
-                                  {pago.user ? 
-                                    `${pago.user.primerNombre} ${pago.user.primerApellido}` : 
-                                    "Sin asignar"
-                                  }
+                                  {pago.user
+                                    ? `${pago.user.primerNombre} ${pago.user.primerApellido}`
+                                    : "Sin asignar"}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {pago.user ? pago.user.correo : "Propietario sin asignar"}
+                                  {pago.user
+                                    ? pago.user.correo
+                                    : "Propietario sin asignar"}
                                 </p>
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="font-medium text-gray-800">Apt. {pago.apartment.numero}</span>
-                            <p className="text-sm text-gray-600">Piso {pago.apartment.piso}</p>
+                            <span className="font-medium text-gray-800">
+                              Apt. {pago.apartment.numero}
+                            </span>
+                            <p className="text-sm text-gray-600">
+                              Piso {pago.apartment.piso}
+                            </p>
                           </td>
                           <td className="py-4 px-4">
                             <span className="font-semibold text-gray-800">
@@ -1291,7 +1448,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <span className="text-gray-800">
-                              {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
+                              {new Date(
+                                pago.fechaVencimiento,
+                              ).toLocaleDateString("es-ES")}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -1302,32 +1461,42 @@ export default function AdminDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleViewDocument((pago as any).comprobanteUrl)}
+                                onClick={() =>
+                                  handleViewDocument(
+                                    (pago as any).comprobanteUrl,
+                                  )
+                                }
                               >
                                 Ver Comprobante
                               </Button>
                             ) : (
-                              <span className="text-gray-400 text-sm">Sin comprobante</span>
+                              <span className="text-gray-400 text-sm">
+                                Sin comprobante
+                              </span>
                             )}
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
-                              {pago.estado === 'en_revision' && (
+                              {pago.estado === "en_revision" && (
                                 <Button
                                   size="sm"
                                   className="bg-secondary text-white hover:bg-green-600"
-                                  onClick={() => markAsPaidMutation.mutate(pago.id)}
+                                  onClick={() =>
+                                    markAsPaidMutation.mutate(pago.id)
+                                  }
                                   disabled={markAsPaidMutation.isPending}
                                 >
                                   Marcar Pagado
                                 </Button>
                               )}
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => handleEditPago(pago)}
                               >
-                                {pago.estado === 'pagado' ? 'Ver Detalles' : 'Editar'}
+                                {pago.estado === "pagado"
+                                  ? "Ver Detalles"
+                                  : "Editar"}
                               </Button>
                               <Button
                                 size="sm"
@@ -1346,12 +1515,13 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Pagination */}
               {totalPagesPayments > 1 && (
                 <div className="flex justify-between items-center mt-6">
                   <p className="text-sm text-gray-600">
-                    Mostrando {paginatedPagos.length} de {filteredPagos.length} registros filtrados ({pagos?.length || 0} total)
+                    Mostrando {paginatedPagos.length} de {filteredPagos.length}{" "}
+                    registros filtrados ({pagos?.length || 0} total)
                   </p>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -1362,35 +1532,45 @@ export default function AdminDashboard() {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    
+
                     {/* Page Numbers */}
                     <div className="flex space-x-1">
-                      {Array.from({ length: Math.min(5, totalPagesPayments) }, (_, i) => {
-                        let pageNum;
-                        if (totalPagesPayments <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPagePayments <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPagePayments >= totalPagesPayments - 2) {
-                          pageNum = totalPagesPayments - 4 + i;
-                        } else {
-                          pageNum = currentPagePayments - 2 + i;
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPagePayments === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageClickPayments(pageNum)}
-                            className="w-8 h-8 p-0"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
+                      {Array.from(
+                        { length: Math.min(5, totalPagesPayments) },
+                        (_, i) => {
+                          let pageNum;
+                          if (totalPagesPayments <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPagePayments <= 3) {
+                            pageNum = i + 1;
+                          } else if (
+                            currentPagePayments >=
+                            totalPagesPayments - 2
+                          ) {
+                            pageNum = totalPagesPayments - 4 + i;
+                          } else {
+                            pageNum = currentPagePayments - 2 + i;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={
+                                currentPagePayments === pageNum
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageClickPayments(pageNum)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        },
+                      )}
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -1414,7 +1594,10 @@ export default function AdminDashboard() {
                 <CardTitle className="text-xl font-bold text-gray-800">
                   Gestión de Usuarios
                 </CardTitle>
-                <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
+                <Dialog
+                  open={showRegisterDialog}
+                  onOpenChange={setShowRegisterDialog}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -1425,12 +1608,16 @@ export default function AdminDashboard() {
                     <DialogHeader>
                       <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
                       <DialogDescription>
-                        Complete la información para crear una nueva cuenta de usuario.
+                        Complete la información para crear una nueva cuenta de
+                        usuario.
                       </DialogDescription>
                     </DialogHeader>
-                    
+
                     <Form {...registerForm}>
-                      <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                      <form
+                        onSubmit={registerForm.handleSubmit(onRegister)}
+                        className="space-y-4"
+                      >
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={registerForm.control}
@@ -1445,7 +1632,7 @@ export default function AdminDashboard() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={registerForm.control}
                             name="segundoNombre"
@@ -1475,7 +1662,7 @@ export default function AdminDashboard() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={registerForm.control}
                             name="segundoApellido"
@@ -1498,10 +1685,10 @@ export default function AdminDashboard() {
                             <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="email" 
-                                  placeholder="usuario@ejemplo.com" 
-                                  {...field} 
+                                <Input
+                                  type="email"
+                                  placeholder="usuario@ejemplo.com"
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1516,10 +1703,10 @@ export default function AdminDashboard() {
                             <FormItem>
                               <FormLabel>Contraseña</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="password" 
-                                  placeholder="Mínimo 6 caracteres" 
-                                  {...field} 
+                                <Input
+                                  type="password"
+                                  placeholder="Mínimo 6 caracteres"
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1548,15 +1735,22 @@ export default function AdminDashboard() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Tipo ID</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="cedula">Cédula</SelectItem>
-                                    <SelectItem value="pasaporte">Pasaporte</SelectItem>
+                                    <SelectItem value="cedula">
+                                      Cédula
+                                    </SelectItem>
+                                    <SelectItem value="pasaporte">
+                                      Pasaporte
+                                    </SelectItem>
                                     <SelectItem value="rif">RIF</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1564,7 +1758,7 @@ export default function AdminDashboard() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={registerForm.control}
                             name="identificacion"
@@ -1586,15 +1780,22 @@ export default function AdminDashboard() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Tipo de Usuario</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="propietario">Propietario</SelectItem>
-                                  <SelectItem value="admin">Administrador</SelectItem>
+                                  <SelectItem value="propietario">
+                                    Propietario
+                                  </SelectItem>
+                                  <SelectItem value="admin">
+                                    Administrador
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -1603,16 +1804,18 @@ export default function AdminDashboard() {
                         />
 
                         <div className="flex space-x-3 pt-4">
-                          <Button 
-                            type="submit" 
-                            className="flex-1" 
+                          <Button
+                            type="submit"
+                            className="flex-1"
                             disabled={registerMutation.isPending}
                           >
-                            {registerMutation.isPending ? "Registrando..." : "Registrar Usuario"}
+                            {registerMutation.isPending
+                              ? "Registrando..."
+                              : "Registrar Usuario"}
                           </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => setShowRegisterDialog(false)}
                           >
                             Cancelar
@@ -1624,7 +1827,7 @@ export default function AdminDashboard() {
                 </Dialog>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               {/* Users Filters */}
               <div className="mb-4 flex flex-col sm:flex-row gap-4">
@@ -1632,12 +1835,25 @@ export default function AdminDashboard() {
                   <Input
                     placeholder="Buscar por nombre, email o identificación..."
                     value={usersFilters.search}
-                    onChange={(e) => setUsersFilters(prev => ({ ...prev, search: e.target.value }))}
+                    onChange={(e) =>
+                      setUsersFilters((prev) => ({
+                        ...prev,
+                        search: e.target.value,
+                      }))
+                    }
                     className="max-w-sm"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Select value={usersFilters.tipoUsuario} onValueChange={(value) => setUsersFilters(prev => ({ ...prev, tipoUsuario: value }))}>
+                  <Select
+                    value={usersFilters.tipoUsuario}
+                    onValueChange={(value) =>
+                      setUsersFilters((prev) => ({
+                        ...prev,
+                        tipoUsuario: value,
+                      }))
+                    }
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Tipo de usuario" />
                     </SelectTrigger>
@@ -1647,10 +1863,13 @@ export default function AdminDashboard() {
                       <SelectItem value="propietario">Propietario</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={itemsPerPageUsers.toString()} onValueChange={(value) => {
-                    setItemsPerPageUsers(parseInt(value));
-                    setCurrentPageUsers(1);
-                  }}>
+                  <Select
+                    value={itemsPerPageUsers.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPageUsers(parseInt(value));
+                      setCurrentPageUsers(1);
+                    }}
+                  >
                     <SelectTrigger className="w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -1676,12 +1895,24 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Usuario</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Email</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Teléfono</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Identificación</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Tipo</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Usuario
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Email
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Teléfono
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Identificación
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Tipo
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1693,62 +1924,85 @@ export default function AdminDashboard() {
                       </tr>
                     ) : !paginatedUsers || paginatedUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-500">
-                          {usersFilters.search || usersFilters.tipoUsuario !== "all" 
-                            ? "No se encontraron usuarios con los filtros aplicados" 
+                        <td
+                          colSpan={6}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          {usersFilters.search ||
+                          usersFilters.tipoUsuario !== "all"
+                            ? "No se encontraron usuarios con los filtros aplicados"
                             : "No hay usuarios para mostrar"}
                         </td>
                       </tr>
                     ) : (
                       paginatedUsers.map((userItem) => (
-                        <tr key={userItem.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <tr
+                          key={userItem.id}
+                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-3">
                               <Avatar className="w-8 h-8">
                                 <AvatarFallback className="bg-primary text-white text-sm">
-                                  {getInitials(userItem.primerNombre, userItem.primerApellido)}
+                                  {getInitials(
+                                    userItem.primerNombre,
+                                    userItem.primerApellido,
+                                  )}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="font-medium text-gray-800">
-                                  {userItem.primerNombre} {userItem.primerApellido}
+                                  {userItem.primerNombre}{" "}
+                                  {userItem.primerApellido}
                                 </p>
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-gray-800">{userItem.correo}</span>
+                            <span className="text-gray-800">
+                              {userItem.correo}
+                            </span>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-gray-800">{userItem.telefono}</span>
+                            <span className="text-gray-800">
+                              {userItem.telefono}
+                            </span>
                           </td>
                           <td className="py-4 px-4">
                             <div>
-                              <span className="text-gray-800">{userItem.identificacion}</span>
-                              <p className="text-sm text-gray-600 capitalize">{userItem.tipoIdentificacion}</p>
+                              <span className="text-gray-800">
+                                {userItem.identificacion}
+                              </span>
+                              <p className="text-sm text-gray-600 capitalize">
+                                {userItem.tipoIdentificacion}
+                              </p>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className={
-                              userItem.tipoUsuario === 'admin' 
-                                ? "font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm" 
-                                : "font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md text-sm"
-                            }>
-                              {userItem.tipoUsuario === 'admin' ? 'Admin' : 'Propietario'}
+                            <span
+                              className={
+                                userItem.tipoUsuario === "admin"
+                                  ? "font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm"
+                                  : "font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md text-sm"
+                              }
+                            >
+                              {userItem.tipoUsuario === "admin"
+                                ? "Admin"
+                                : "Propietario"}
                             </span>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex space-x-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => handleEditUser(userItem)}
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="text-red-600 hover:text-red-700"
                                 onClick={() => handleDeleteUser(userItem)}
                               >
@@ -1778,35 +2032,42 @@ export default function AdminDashboard() {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    
+
                     {/* Page Numbers */}
                     <div className="flex space-x-1">
-                      {Array.from({ length: Math.min(5, totalPagesUsers) }, (_, i) => {
-                        let pageNum;
-                        if (totalPagesUsers <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPageUsers <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPageUsers >= totalPagesUsers - 2) {
-                          pageNum = totalPagesUsers - 4 + i;
-                        } else {
-                          pageNum = currentPageUsers - 2 + i;
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPageUsers === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageClickUsers(pageNum)}
-                            className="w-8 h-8 p-0"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
+                      {Array.from(
+                        { length: Math.min(5, totalPagesUsers) },
+                        (_, i) => {
+                          let pageNum;
+                          if (totalPagesUsers <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPageUsers <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPageUsers >= totalPagesUsers - 2) {
+                            pageNum = totalPagesUsers - 4 + i;
+                          } else {
+                            pageNum = currentPageUsers - 2 + i;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={
+                                currentPageUsers === pageNum
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageClickUsers(pageNum)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        },
+                      )}
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -1830,7 +2091,10 @@ export default function AdminDashboard() {
                 <CardTitle className="text-xl font-bold text-gray-800">
                   Gestión de Apartamentos
                 </CardTitle>
-                <Dialog open={showApartmentDialog} onOpenChange={setShowApartmentDialog}>
+                <Dialog
+                  open={showApartmentDialog}
+                  onOpenChange={setShowApartmentDialog}
+                >
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="w-4 h-4 mr-2" />
@@ -1845,7 +2109,10 @@ export default function AdminDashboard() {
                       </DialogDescription>
                     </DialogHeader>
                     <Form {...apartmentForm}>
-                      <form onSubmit={apartmentForm.handleSubmit(onCreateApartment)} className="space-y-4">
+                      <form
+                        onSubmit={apartmentForm.handleSubmit(onCreateApartment)}
+                        className="space-y-4"
+                      >
                         <FormField
                           control={apartmentForm.control}
                           name="numero"
@@ -1853,13 +2120,16 @@ export default function AdminDashboard() {
                             <FormItem>
                               <FormLabel>Número del Apartamento</FormLabel>
                               <FormControl>
-                                <Input placeholder="Ej: 101, A-1, etc." {...field} />
+                                <Input
+                                  placeholder="Ej: 101, A-1, etc."
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={apartmentForm.control}
                           name="piso"
@@ -1867,11 +2137,13 @@ export default function AdminDashboard() {
                             <FormItem>
                               <FormLabel>Piso</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  {...field} 
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1898,20 +2170,34 @@ export default function AdminDashboard() {
                           name="idUsuario"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Propietario Asignado (Opcional)</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <FormLabel>
+                                Propietario Asignado (Opcional)
+                              </FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Selecciona un propietario (opcional)" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="unassigned">Sin asignar</SelectItem>
-                                  {users?.filter(u => u.tipoUsuario === 'propietario' && !u.idApartamento).map(user => (
-                                    <SelectItem key={user.id} value={user.id}>
-                                      {user.primerNombre} {user.primerApellido}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="unassigned">
+                                    Sin asignar
+                                  </SelectItem>
+                                  {users
+                                    ?.filter(
+                                      (u) =>
+                                        u.tipoUsuario === "propietario" &&
+                                        !u.idApartamento,
+                                    )
+                                    .map((user) => (
+                                      <SelectItem key={user.id} value={user.id}>
+                                        {user.primerNombre}{" "}
+                                        {user.primerApellido}
+                                      </SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -1920,16 +2206,18 @@ export default function AdminDashboard() {
                         />
 
                         <div className="flex space-x-3 pt-4">
-                          <Button 
-                            type="submit" 
-                            className="flex-1" 
+                          <Button
+                            type="submit"
+                            className="flex-1"
                             disabled={createApartmentMutation.isPending}
                           >
-                            {createApartmentMutation.isPending ? "Creando..." : "Crear Apartamento"}
+                            {createApartmentMutation.isPending
+                              ? "Creando..."
+                              : "Crear Apartamento"}
                           </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => setShowApartmentDialog(false)}
                           >
                             Cancelar
@@ -1941,18 +2229,19 @@ export default function AdminDashboard() {
                 </Dialog>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               {/* Apartments Filters */}
               <div className="mb-4 flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  {/* Spacer for alignment */}
-                </div>
+                <div className="flex-1">{/* Spacer for alignment */}</div>
                 <div className="flex gap-2">
-                  <Select value={itemsPerPageApartments.toString()} onValueChange={(value) => {
-                    setItemsPerPageApartments(parseInt(value));
-                    setCurrentPageApartments(1);
-                  }}>
+                  <Select
+                    value={itemsPerPageApartments.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPageApartments(parseInt(value));
+                      setCurrentPageApartments(1);
+                    }}
+                  >
                     <SelectTrigger className="w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -1969,7 +2258,8 @@ export default function AdminDashboard() {
               {/* Apartments Results Info */}
               <div className="mb-4 flex justify-between items-center">
                 <p className="text-sm text-gray-600">
-                  Mostrando {paginatedApartments.length} de {totalApartments} apartamentos
+                  Mostrando {paginatedApartments.length} de {totalApartments}{" "}
+                  apartamentos
                 </p>
               </div>
 
@@ -1977,17 +2267,30 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Apartamento</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Piso</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Alícuota (%)</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario Asignado</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Acciones</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Apartamento
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Piso
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Alícuota (%)
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Propietario Asignado
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {!apartments || apartments.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-8 text-gray-500">
+                        <td
+                          colSpan={5}
+                          className="text-center py-8 text-gray-500"
+                        >
                           No hay apartamentos registrados
                         </td>
                       </tr>
@@ -1995,19 +2298,26 @@ export default function AdminDashboard() {
                       paginatedApartments.map((apartment) => {
                         const assignedUser = apartment.user;
                         return (
-                          <tr key={apartment.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <tr
+                            key={apartment.id}
+                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                          >
                             <td className="py-4 px-4">
                               <div className="flex items-center space-x-3">
                                 <div className="bg-primary bg-opacity-10 p-2 rounded-lg">
                                   <Home className="w-4 h-4 text-primary" />
                                 </div>
                                 <div>
-                                  <p className="font-medium text-gray-800">Apt. {apartment.numero}</p>
+                                  <p className="font-medium text-gray-800">
+                                    Apt. {apartment.numero}
+                                  </p>
                                 </div>
                               </div>
                             </td>
                             <td className="py-4 px-4">
-                              <span className="text-gray-800">Piso {apartment.piso}</span>
+                              <span className="text-gray-800">
+                                Piso {apartment.piso}
+                              </span>
                             </td>
                             <td className="py-4 px-4">
                               <span className="font-medium text-blue-600">
@@ -2019,44 +2329,59 @@ export default function AdminDashboard() {
                                 <div className="flex items-center space-x-2">
                                   <Avatar className="w-6 h-6">
                                     <AvatarFallback className="bg-secondary text-white text-xs">
-                                      {getInitials(assignedUser.primerNombre, assignedUser.primerApellido)}
+                                      {getInitials(
+                                        assignedUser.primerNombre,
+                                        assignedUser.primerApellido,
+                                      )}
                                     </AvatarFallback>
                                   </Avatar>
                                   <span className="text-gray-800 text-sm">
-                                    {assignedUser.primerNombre} {assignedUser.primerApellido}
+                                    {assignedUser.primerNombre}{" "}
+                                    {assignedUser.primerApellido}
                                   </span>
                                 </div>
                               ) : (
-                                <Badge variant="outline" className="text-gray-500">
+                                <Badge
+                                  variant="outline"
+                                  className="text-gray-500"
+                                >
                                   Sin asignar
                                 </Badge>
                               )}
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex space-x-2">
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => handleEditApartment(apartment)}
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
-                                  onClick={() => handleViewApartmentHistory(apartment)}
+                                  onClick={() =>
+                                    handleViewApartmentHistory(apartment)
+                                  }
                                   title="Ver historial de pagos"
                                   className="text-blue-600 hover:text-blue-700"
                                 >
                                   <FileText className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   className="text-red-600 hover:text-red-700"
                                   onClick={() => {
-                                    if (confirm("¿Estás seguro de que quieres eliminar este apartamento?")) {
-                                      deleteApartmentMutation.mutate(apartment.id);
+                                    if (
+                                      confirm(
+                                        "¿Estás seguro de que quieres eliminar este apartamento?",
+                                      )
+                                    ) {
+                                      deleteApartmentMutation.mutate(
+                                        apartment.id,
+                                      );
                                     }
                                   }}
                                   disabled={deleteApartmentMutation.isPending}
@@ -2072,50 +2397,64 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Pagination for apartments */}
               {totalApartments > 0 && (
                 <div className="flex justify-between items-center mt-6">
                   <p className="text-sm text-gray-600">
-                    Mostrando {startIndexApartments + 1} - {Math.min(endIndexApartments, totalApartments)} de {totalApartments} apartamentos
+                    Mostrando {startIndexApartments + 1} -{" "}
+                    {Math.min(endIndexApartments, totalApartments)} de{" "}
+                    {totalApartments} apartamentos
                   </p>
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={handlePreviousPageApartments}
                       disabled={currentPageApartments === 1}
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    
+
                     {/* Page numbers */}
-                    {Array.from({ length: Math.min(5, totalPagesApartments) }, (_, i) => {
-                      let pageNumber;
-                      if (totalPagesApartments <= 5) {
-                        pageNumber = i + 1;
-                      } else if (currentPageApartments <= 3) {
-                        pageNumber = i + 1;
-                      } else if (currentPageApartments >= totalPagesApartments - 2) {
-                        pageNumber = totalPagesApartments - 4 + i;
-                      } else {
-                        pageNumber = currentPageApartments - 2 + i;
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNumber}
-                          size="sm"
-                          variant={currentPageApartments === pageNumber ? "default" : "outline"}
-                          onClick={() => handlePageClickApartments(pageNumber)}
-                        >
-                          {pageNumber}
-                        </Button>
-                      );
-                    })}
-                    
-                    <Button 
-                      variant="outline" 
+                    {Array.from(
+                      { length: Math.min(5, totalPagesApartments) },
+                      (_, i) => {
+                        let pageNumber;
+                        if (totalPagesApartments <= 5) {
+                          pageNumber = i + 1;
+                        } else if (currentPageApartments <= 3) {
+                          pageNumber = i + 1;
+                        } else if (
+                          currentPageApartments >=
+                          totalPagesApartments - 2
+                        ) {
+                          pageNumber = totalPagesApartments - 4 + i;
+                        } else {
+                          pageNumber = currentPageApartments - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNumber}
+                            size="sm"
+                            variant={
+                              currentPageApartments === pageNumber
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() =>
+                              handlePageClickApartments(pageNumber)
+                            }
+                          >
+                            {pageNumber}
+                          </Button>
+                        );
+                      },
+                    )}
+
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={handleNextPageApartments}
                       disabled={currentPageApartments === totalPagesApartments}
@@ -2130,7 +2469,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-
       {/* Edit User Dialog */}
       <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
         <DialogContent className="max-w-md">
@@ -2141,7 +2479,10 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <Form {...editUserForm}>
-            <form onSubmit={editUserForm.handleSubmit(onEditUser)} className="space-y-4">
+            <form
+              onSubmit={editUserForm.handleSubmit(onEditUser)}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={editUserForm.control}
@@ -2207,7 +2548,11 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="correo@ejemplo.com" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2236,7 +2581,10 @@ export default function AdminDashboard() {
                     <FormItem>
                       <FormLabel>Identificación</FormLabel>
                       <FormControl>
-                        <Input placeholder="Número de identificación" {...field} />
+                        <Input
+                          placeholder="Número de identificación"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -2248,7 +2596,10 @@ export default function AdminDashboard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de identificación</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona tipo" />
@@ -2289,16 +2640,18 @@ export default function AdminDashboard() {
               />
 
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
+                <Button
+                  type="submit"
+                  className="flex-1"
                   disabled={editUserMutation.isPending}
                 >
-                  {editUserMutation.isPending ? "Actualizando..." : "Actualizar Usuario"}
+                  {editUserMutation.isPending
+                    ? "Actualizando..."
+                    : "Actualizar Usuario"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowEditUserDialog(false);
                     setEditingUser(null);
@@ -2313,7 +2666,10 @@ export default function AdminDashboard() {
       </Dialog>
 
       {/* Edit Apartment Dialog */}
-      <Dialog open={showEditApartmentDialog} onOpenChange={setShowEditApartmentDialog}>
+      <Dialog
+        open={showEditApartmentDialog}
+        onOpenChange={setShowEditApartmentDialog}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Apartamento</DialogTitle>
@@ -2322,7 +2678,10 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <Form {...editApartmentForm}>
-            <form onSubmit={editApartmentForm.handleSubmit(onEditApartment)} className="space-y-4">
+            <form
+              onSubmit={editApartmentForm.handleSubmit(onEditApartment)}
+              className="space-y-4"
+            >
               <FormField
                 control={editApartmentForm.control}
                 name="numero"
@@ -2344,11 +2703,13 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Piso</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Número de piso" 
+                      <Input
+                        type="number"
+                        placeholder="Número de piso"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 1)
+                        }
                         value={field.value}
                       />
                     </FormControl>
@@ -2364,7 +2725,12 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Porcentaje de Alícuota (%)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: 8.50" type="number" step="0.01" {...field} />
+                      <Input
+                        placeholder="Ej: 8.50"
+                        type="number"
+                        step="0.01"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2385,11 +2751,18 @@ export default function AdminDashboard() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="unassigned">Sin asignar</SelectItem>
-                        {users?.filter(u => u.tipoUsuario === 'propietario' && (!u.idApartamento || u.id === editingApartment?.user?.id)).map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.primerNombre} {user.primerApellido}
-                          </SelectItem>
-                        ))}
+                        {users
+                          ?.filter(
+                            (u) =>
+                              u.tipoUsuario === "propietario" &&
+                              (!u.idApartamento ||
+                                u.id === editingApartment?.user?.id),
+                          )
+                          .map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.primerNombre} {user.primerApellido}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -2398,16 +2771,18 @@ export default function AdminDashboard() {
               />
 
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
+                <Button
+                  type="submit"
+                  className="flex-1"
                   disabled={editApartmentMutation.isPending}
                 >
-                  {editApartmentMutation.isPending ? "Actualizando..." : "Actualizar Apartamento"}
+                  {editApartmentMutation.isPending
+                    ? "Actualizando..."
+                    : "Actualizar Apartamento"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowEditApartmentDialog(false);
                     setEditingApartment(null);
@@ -2431,7 +2806,10 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <Form {...pagoForm}>
-            <form onSubmit={pagoForm.handleSubmit(onCreatePago)} className="space-y-4">
+            <form
+              onSubmit={pagoForm.handleSubmit(onCreatePago)}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={pagoForm.control}
@@ -2439,28 +2817,40 @@ export default function AdminDashboard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Usuario</FormLabel>
-                      <Select onValueChange={(value) => {
-                        field.onChange(value);
-                        // Auto-select apartment when user is selected
-                        const selectedUser = users?.find(u => u.id === value);
-                        if (selectedUser?.idApartamento) {
-                          pagoForm.setValue('idApartamento', selectedUser.idApartamento);
-                        }
-                      }} value={field.value}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Auto-select apartment when user is selected
+                          const selectedUser = users?.find(
+                            (u) => u.id === value,
+                          );
+                          if (selectedUser?.idApartamento) {
+                            pagoForm.setValue(
+                              "idApartamento",
+                              selectedUser.idApartamento,
+                            );
+                          }
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona usuario" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {users?.filter(u => u.tipoUsuario === 'propietario').map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.primerNombre} {user.primerApellido}
-                              {user.idApartamento && apartments?.find(apt => apt.id === user.idApartamento) && 
-                                ` - Apt. ${apartments.find(apt => apt.id === user.idApartamento)?.numero}`
-                              }
-                            </SelectItem>
-                          ))}
+                          {users
+                            ?.filter((u) => u.tipoUsuario === "propietario")
+                            .map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.primerNombre} {user.primerApellido}
+                                {user.idApartamento &&
+                                  apartments?.find(
+                                    (apt) => apt.id === user.idApartamento,
+                                  ) &&
+                                  ` - Apt. ${apartments.find((apt) => apt.id === user.idApartamento)?.numero}`}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -2473,29 +2863,38 @@ export default function AdminDashboard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Apartamento</FormLabel>
-                      <Select onValueChange={(value) => {
-                        const apartmentId = parseInt(value);
-                        field.onChange(apartmentId);
-                        // Auto-select user when apartment is selected
-                        const selectedUser = users?.find(u => u.idApartamento === apartmentId);
-                        if (selectedUser) {
-                          pagoForm.setValue('idUsuario', selectedUser.id);
-                        }
-                      }} value={field.value?.toString() || ""}>
+                      <Select
+                        onValueChange={(value) => {
+                          const apartmentId = parseInt(value);
+                          field.onChange(apartmentId);
+                          // Auto-select user when apartment is selected
+                          const selectedUser = users?.find(
+                            (u) => u.idApartamento === apartmentId,
+                          );
+                          if (selectedUser) {
+                            pagoForm.setValue("idUsuario", selectedUser.id);
+                          }
+                        }}
+                        value={field.value?.toString() || ""}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona apartamento" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {apartments?.map(apt => {
-                            const assignedUser = users?.find(u => u.idApartamento === apt.id);
+                          {apartments?.map((apt) => {
+                            const assignedUser = users?.find(
+                              (u) => u.idApartamento === apt.id,
+                            );
                             return (
-                              <SelectItem key={apt.id} value={apt.id.toString()}>
+                              <SelectItem
+                                key={apt.id}
+                                value={apt.id.toString()}
+                              >
                                 Apt. {apt.numero}
-                                {assignedUser && 
-                                  ` - ${assignedUser.primerNombre} ${assignedUser.primerApellido}`
-                                }
+                                {assignedUser &&
+                                  ` - ${assignedUser.primerNombre} ${assignedUser.primerApellido}`}
                               </SelectItem>
                             );
                           })}
@@ -2515,7 +2914,12 @@ export default function AdminDashboard() {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -2543,7 +2947,10 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Concepto</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Mantenimiento de condominio" {...field} />
+                      <Input
+                        placeholder="Ej: Mantenimiento de condominio"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2557,13 +2964,20 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Método de Pago (Opcional)</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar método de pago" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
-                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="sin_especificar">
+                            Sin especificar
+                          </SelectItem>
+                          <SelectItem value="transferencia">
+                            Transferencia Bancaria
+                          </SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                         </SelectContent>
                       </Select>
@@ -2585,7 +2999,9 @@ export default function AdminDashboard() {
                 >
                   <div className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    {uploadedReceiptUrl ? "Cambiar Comprobante" : "Subir Comprobante"}
+                    {uploadedReceiptUrl
+                      ? "Cambiar Comprobante"
+                      : "Subir Comprobante"}
                   </div>
                 </ObjectUploader>
                 {uploadedReceiptUrl && (
@@ -2596,16 +3012,16 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
+                <Button
+                  type="submit"
+                  className="flex-1"
                   disabled={createPagoMutation.isPending}
                 >
                   {createPagoMutation.isPending ? "Creando..." : "Crear Pago"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowPagoDialog(false);
                     setUploadedReceiptUrl("");
@@ -2630,7 +3046,10 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <Form {...editPagoForm}>
-            <form onSubmit={editPagoForm.handleSubmit(onEditPagoSubmit)} className="space-y-4">
+            <form
+              onSubmit={editPagoForm.handleSubmit(onEditPagoSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 control={editPagoForm.control}
                 name="concepto"
@@ -2680,13 +3099,20 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Método de Pago</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar método" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
-                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="sin_especificar">
+                            Sin especificar
+                          </SelectItem>
+                          <SelectItem value="transferencia">
+                            Transferencia Bancaria
+                          </SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                         </SelectContent>
                       </Select>
@@ -2703,7 +3129,10 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar estado" />
                         </SelectTrigger>
@@ -2711,7 +3140,9 @@ export default function AdminDashboard() {
                           <SelectItem value="pendiente">Pendiente</SelectItem>
                           <SelectItem value="pagado">Pagado</SelectItem>
                           <SelectItem value="vencido">Vencido</SelectItem>
-                          <SelectItem value="en_revision">En Revisión</SelectItem>
+                          <SelectItem value="en_revision">
+                            En Revisión
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -2721,16 +3152,18 @@ export default function AdminDashboard() {
               />
 
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
+                <Button
+                  type="submit"
+                  className="flex-1"
                   disabled={editPagoMutation.isPending}
                 >
-                  {editPagoMutation.isPending ? "Actualizando..." : "Actualizar Pago"}
+                  {editPagoMutation.isPending
+                    ? "Actualizando..."
+                    : "Actualizar Pago"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowEditPagoDialog(false);
                     setEditingPago(null);
@@ -2743,18 +3176,22 @@ export default function AdminDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Bulk Pago Dialog */}
       <Dialog open={showBulkPagoDialog} onOpenChange={setShowBulkPagoDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Generar Pagos en Masa</DialogTitle>
+            <DialogTitle>Generar Recibo</DialogTitle>
             <DialogDescription>
-              Crea pagos automáticamente para todos los apartamentos basado en alícuotas
+              Crea pagos automáticamente para todos los apartamentos basado en
+              alícuotas
             </DialogDescription>
           </DialogHeader>
           <Form {...bulkPagoForm}>
-            <form onSubmit={bulkPagoForm.handleSubmit(onBulkPagoSubmit)} className="space-y-4">
+            <form
+              onSubmit={bulkPagoForm.handleSubmit(onBulkPagoSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 control={bulkPagoForm.control}
                 name="concepto"
@@ -2762,7 +3199,10 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Concepto</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Alícuota Febrero 2025" {...field} />
+                      <Input
+                        placeholder="Ej: Alícuota Febrero 2025"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2804,13 +3244,20 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Método de Pago Sugerido (Opcional)</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar método" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sin_especificar">Sin especificar</SelectItem>
-                          <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                          <SelectItem value="sin_especificar">
+                            Sin especificar
+                          </SelectItem>
+                          <SelectItem value="transferencia">
+                            Transferencia Bancaria
+                          </SelectItem>
                           <SelectItem value="pago_movil">Pago Móvil</SelectItem>
                           <SelectItem value="efectivo">Efectivo</SelectItem>
                           <SelectItem value="zelle">Zelle</SelectItem>
@@ -2824,20 +3271,23 @@ export default function AdminDashboard() {
               />
 
               <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">
-                <strong>Nota:</strong> Los montos se calcularán automáticamente según el porcentaje de alícuota de cada apartamento.
+                <strong>Nota:</strong> Los montos se calcularán automáticamente
+                según el porcentaje de alícuota de cada apartamento.
               </div>
 
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="submit" 
-                  className="flex-1" 
+                <Button
+                  type="submit"
+                  className="flex-1"
                   disabled={bulkPagoMutation.isPending}
                 >
-                  {bulkPagoMutation.isPending ? "Generando..." : "Generar Pagos"}
+                  {bulkPagoMutation.isPending
+                    ? "Generando..."
+                    : "Generar Pagos"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowBulkPagoDialog(false);
                     bulkPagoForm.reset();
@@ -2855,12 +3305,15 @@ export default function AdminDashboard() {
       <Dialog open={showHistorialDialog} onOpenChange={setShowHistorialDialog}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Historial de Pagos - Apartamento {selectedApartmentForHistory?.numero}</DialogTitle>
+            <DialogTitle>
+              Historial de Pagos - Apartamento{" "}
+              {selectedApartmentForHistory?.numero}
+            </DialogTitle>
             <DialogDescription>
               Historial completo de pagos del apartamento
             </DialogDescription>
           </DialogHeader>
-          
+
           {historyLoading ? (
             <div className="flex justify-center py-8">
               <div className="text-gray-600">Cargando historial...</div>
@@ -2871,26 +3324,45 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="sticky top-0 bg-white border-b border-gray-200">
                     <tr>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Propietario</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Monto</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Concepto</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Fecha Venc.</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Estado</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Método</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Propietario
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Monto
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Concepto
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Fecha Venc.
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Estado
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                        Método
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {apartmentHistory.map((pago) => (
-                      <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr
+                        key={pago.id}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
                               <AvatarFallback className="bg-primary text-white text-xs">
-                                {getInitials(pago.user.primerNombre, pago.user.primerApellido)}
+                                {getInitials(
+                                  pago.user.primerNombre,
+                                  pago.user.primerApellido,
+                                )}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm">
-                              {pago.user.primerNombre} {pago.user.primerApellido}
+                              {pago.user.primerNombre}{" "}
+                              {pago.user.primerApellido}
                             </span>
                           </div>
                         </td>
@@ -2900,11 +3372,15 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-gray-800 text-sm">{pago.concepto}</span>
+                          <span className="text-gray-800 text-sm">
+                            {pago.concepto}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-gray-800 text-sm">
-                            {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
+                            {new Date(pago.fechaVencimiento).toLocaleDateString(
+                              "es-ES",
+                            )}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -2912,7 +3388,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-gray-600 text-sm capitalize">
-                            {pago.metodoPago?.replace('_', ' ') || 'N/A'}
+                            {pago.metodoPago?.replace("_", " ") || "N/A"}
                           </span>
                         </td>
                       </tr>
@@ -2943,20 +3419,40 @@ export default function AdminDashboard() {
           )}
         </DialogContent>
       </Dialog>
-      
-      <LoadingModal 
-        isOpen={markAsPaidMutation.isPending || registerMutation.isPending || createApartmentMutation.isPending || editUserMutation.isPending || editApartmentMutation.isPending || createPagoMutation.isPending || editPagoMutation.isPending || bulkPagoMutation.isPending || deletePagoMutation.isPending} 
+
+      <LoadingModal
+        isOpen={
+          markAsPaidMutation.isPending ||
+          registerMutation.isPending ||
+          createApartmentMutation.isPending ||
+          editUserMutation.isPending ||
+          editApartmentMutation.isPending ||
+          createPagoMutation.isPending ||
+          editPagoMutation.isPending ||
+          bulkPagoMutation.isPending ||
+          deletePagoMutation.isPending
+        }
         message={
-          markAsPaidMutation.isPending ? "Actualizando pago..." : 
-          registerMutation.isPending ? "Registrando usuario..." :
-          createApartmentMutation.isPending ? "Creando apartamento..." :
-          editUserMutation.isPending ? "Actualizando usuario..." :
-          editApartmentMutation.isPending ? "Actualizando apartamento..." :
-          createPagoMutation.isPending ? "Creando pago..." : 
-          editPagoMutation.isPending ? "Actualizando pago..." :
-          bulkPagoMutation.isPending ? "Generando pagos en masa..." : 
-          deletePagoMutation.isPending ? "Eliminando pago..." : "Procesando..."
-        } 
+          markAsPaidMutation.isPending
+            ? "Actualizando pago..."
+            : registerMutation.isPending
+              ? "Registrando usuario..."
+              : createApartmentMutation.isPending
+                ? "Creando apartamento..."
+                : editUserMutation.isPending
+                  ? "Actualizando usuario..."
+                  : editApartmentMutation.isPending
+                    ? "Actualizando apartamento..."
+                    : createPagoMutation.isPending
+                      ? "Creando pago..."
+                      : editPagoMutation.isPending
+                        ? "Actualizando pago..."
+                        : bulkPagoMutation.isPending
+                          ? "Generando pagos en masa..."
+                          : deletePagoMutation.isPending
+                            ? "Eliminando pago..."
+                            : "Procesando..."
+        }
       />
     </div>
   );

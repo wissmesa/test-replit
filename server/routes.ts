@@ -468,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating bulk payments:", error);
-      res.status(500).json({ message: "No se pudieron generar los pagos en masa" });
+      res.status(500).json({ message: "No se pudieron generar los recibos" });
     }
   });
 
