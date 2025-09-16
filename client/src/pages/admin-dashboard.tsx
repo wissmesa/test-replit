@@ -947,6 +947,12 @@ export default function AdminDashboard() {
     pagos?.filter((pago) => {
       if (filters.search) {
         const searchTerm = filters.search.toLowerCase();
+        
+        // Verificar que el usuario exista
+        if (!pago.user) {
+          return false;
+        }
+        
         const firstName = (pago.user.primerNombre || "").toLowerCase();
         const lastName = (pago.user.primerApellido || "").toLowerCase();
         
