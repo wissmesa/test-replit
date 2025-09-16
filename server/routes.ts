@@ -792,26 +792,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update all pending payments with latest BCV exchange rate
-  app.post('/api/pagos/update-pending-rates', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      console.log("Updating pending payments with latest BCV rate...");
-      const result = await storage.updatePendingPaymentsWithLatestRate();
-      
-      console.log(`Updated ${result.updated} pending payments with rate ${result.latestRate}`);
-      res.json({
-        message: `${result.updated} pagos pendientes actualizados con la tasa más reciente`,
-        updated: result.updated,
-        latestRate: result.latestRate
-      });
-    } catch (error) {
-      console.error("Error updating pending payments with latest rate:", error);
-      res.status(500).json({ 
-        message: "No se pudieron actualizar los pagos pendientes con la nueva tasa" 
-      });
-    }
-  });
-
   // Exchange rates routes
   app.get('/api/tasas-cambio', isAuthenticated, async (req: any, res) => {
     try {
