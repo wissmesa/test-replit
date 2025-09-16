@@ -61,6 +61,7 @@ import {
   Trash2,
   FileText,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -707,6 +708,29 @@ export default function AdminDashboard() {
     },
   });
 
+  // Update pending payments with latest BCV rate mutation
+  const updatePendingRatesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/pagos/update-pending-rates", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Tasas actualizadas",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar tasas",
+        description: error.message || "No se pudieron actualizar las tasas de cambio",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout", {});
@@ -1246,6 +1270,15 @@ export default function AdminDashboard() {
                   <Button variant="outline">
                     <Download className="w-4 h-4 mr-2" />
                     Exportar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => updatePendingRatesMutation.mutate()}
+                    disabled={updatePendingRatesMutation.isPending}
+                    data-testid="button-update-rates"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    {updatePendingRatesMutation.isPending ? "Actualizando..." : "Actualizar Tasas BCV"}
                   </Button>
                   <Button
                     variant="outline"
