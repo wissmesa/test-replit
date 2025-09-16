@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import type { UserWithApartment, PagoWithRelations, PaymentFormData } from "@shared/schema";
-import { paymentFormSchema } from "@shared/schema";
+import type { UserWithApartment, PagoWithRelations, PaymentFormData, BulkPaymentFormData } from "@shared/schema";
+import { paymentFormSchema, BulkPaymentFormSchema } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Building, 
   CreditCard, 
@@ -34,7 +35,9 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  User
+  User,
+  Plus,
+  X
 } from "lucide-react";
 import LoadingModal from "@/components/ui/loading-modal";
 
@@ -62,6 +65,10 @@ export default function TenantDashboard() {
   const [selectedPaymentForForm, setSelectedPaymentForForm] = useState<PagoWithRelations | null>(null);
   const [currentHistoryPage, setCurrentHistoryPage] = useState(1);
   const HISTORY_ITEMS_PER_PAGE = 5;
+  
+  // Multiple selection state
+  const [selectedPagoIds, setSelectedPagoIds] = useState<Set<string>>(new Set());
+  const [showBulkPaymentDialog, setShowBulkPaymentDialog] = useState(false);
 
   // Redirect if not authenticated or not tenant
   useEffect(() => {
@@ -144,6 +151,19 @@ export default function TenantDashboard() {
     },
   });
 
+  // Bulk payment form configuration
+  const bulkPaymentForm = useForm<BulkPaymentFormData>({
+    resolver: zodResolver(BulkPaymentFormSchema),
+    defaultValues: {
+      fechaOperacion: new Date().toISOString().split('T')[0],
+      cedulaRif: user?.identificacion || "",
+      monto: "",
+      tipoOperacion: "mismo_banco",
+      correoElectronico: user?.correo || "",
+      pagoIds: [],
+    },
+  });
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
@@ -211,6 +231,98 @@ export default function TenantDashboard() {
       });
     },
   });
+
+  // Submit bulk payment mutation
+  const submitBulkPaymentMutation = useMutation({
+    mutationFn: async (data: BulkPaymentFormData) => {
+      await apiRequest('POST', '/api/pagos/submit-bulk-payment', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      setShowBulkPaymentDialog(false);
+      setSelectedPagoIds(new Set());
+      bulkPaymentForm.reset();
+      toast({
+        title: "Éxito",
+        description: "Pagos múltiples enviados para revisión del administrador",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudo procesar los pagos múltiples",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Selection handler functions
+  const togglePagoSelection = (pagoId: string) => {
+    setSelectedPagoIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(pagoId)) {
+        newSet.delete(pagoId);
+      } else {
+        newSet.add(pagoId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllPendingPagos = (pagosPendientes: PagoWithRelations[]) => {
+    const allIds = pagosPendientes.map(p => p.id);
+    setSelectedPagoIds(new Set(allIds));
+  };
+
+  const deselectAllPagos = () => {
+    setSelectedPagoIds(new Set());
+  };
+
+  const handleBulkPayment = () => {
+    if (selectedPagoIds.size === 0) return;
+    
+    // Reset form with default values and selected pago IDs
+    bulkPaymentForm.reset({
+      fechaOperacion: new Date().toISOString().split('T')[0],
+      cedulaRif: user?.identificacion || "",
+      monto: "",
+      tipoOperacion: "mismo_banco",
+      correoElectronico: user?.correo || "",
+      pagoIds: Array.from(selectedPagoIds),
+    });
+    
+    setShowBulkPaymentDialog(true);
+  };
+
+  const onSubmitBulkPaymentForm = (data: BulkPaymentFormData) => {
+    submitBulkPaymentMutation.mutate(data);
+  };
+
+  const getSelectedPagosInfo = () => {
+    if (!pagos || selectedPagoIds.size === 0) {
+      return { count: 0, total: 0, selectedPagos: [] };
+    }
+    
+    const selectedPagos = pagos.filter(p => selectedPagoIds.has(p.id));
+    const total = selectedPagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    
+    return {
+      count: selectedPagos.length,
+      total,
+      selectedPagos
+    };
+  };
 
   const handleLogout = async () => {
     try {
@@ -523,48 +635,126 @@ export default function TenantDashboard() {
                   {/* Pagos Pendientes */}
                   {(() => {
                     const pagosPendientes = pagos.filter(p => p.estado === 'pendiente' || p.estado === 'vencido');
+                    const selectedInfo = getSelectedPagosInfo();
+                    
                     return pagosPendientes.length > 0 && (
                       <div>
-                        <div className="flex items-center mb-4">
-                          <div className="bg-orange-100 p-2 rounded-lg mr-3">
-                            <Clock className="w-5 h-5 text-orange-600" />
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <div className="bg-orange-100 p-2 rounded-lg mr-3">
+                              <Clock className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800">
+                              Pagos Pendientes 
+                              <span className="ml-2 bg-orange-100 text-orange-800 text-sm px-2 py-1 rounded-full">
+                                {pagosPendientes.length}
+                              </span>
+                            </h3>
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            Pagos Pendientes 
-                            <span className="ml-2 bg-orange-100 text-orange-800 text-sm px-2 py-1 rounded-full">
-                              {pagosPendientes.length}
-                            </span>
-                          </h3>
+                          
+                          {/* Select All Checkbox */}
+                          <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer">
+                              <Checkbox
+                                checked={pagosPendientes.length > 0 && pagosPendientes.every(p => selectedPagoIds.has(p.id))}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    selectAllPendingPagos(pagosPendientes);
+                                  } else {
+                                    deselectAllPagos();
+                                  }
+                                }}
+                                data-testid="checkbox-select-all"
+                              />
+                              <span>Seleccionar todos</span>
+                            </label>
+                          </div>
                         </div>
+
+                        {/* Bulk Actions Bar */}
+                        {selectedPagoIds.size > 0 && (
+                          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <div className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium">
+                                    {selectedInfo.count}
+                                  </div>
+                                  <span className="font-medium text-gray-800">
+                                    {selectedInfo.count === 1 ? 'pago seleccionado' : 'pagos seleccionados'}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  Total: <span className="font-semibold text-green-600">{formatCurrency(selectedInfo.total)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={deselectAllPagos}
+                                  className="flex items-center space-x-1"
+                                  data-testid="button-deselect-all"
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span>Deseleccionar</span>
+                                </Button>
+                                <Button
+                                  className="bg-primary text-white hover:bg-blue-700 flex items-center space-x-1"
+                                  onClick={handleBulkPayment}
+                                  disabled={submitBulkPaymentMutation.isPending}
+                                  data-testid="button-bulk-pay"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  <span>
+                                    {submitBulkPaymentMutation.isPending ? "Procesando..." : "Pagar Seleccionados"}
+                                  </span>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="space-y-3">
                           {pagosPendientes.map((pago) => (
                             <Card key={pago.id} className="border border-orange-200 hover:border-orange-300 transition-colors">
                               <CardContent className="p-4">
                                 <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-3">
-                                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                                        pago.estado === 'vencido' ? 'bg-red-100' : 'bg-orange-100'
-                                      }`}>
-                                        {getStatusIcon(pago.estado)}
-                                      </div>
-                                      <div>
-                                        <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
-                                        <p className="text-sm text-gray-600">
-                                          Vencimiento: {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
-                                        </p>
-                                      </div>
+                                  <div className="flex items-start space-x-3 flex-1">
+                                    {/* Checkbox for selection */}
+                                    <div className="mt-2">
+                                      <Checkbox
+                                        checked={selectedPagoIds.has(pago.id)}
+                                        onCheckedChange={() => togglePagoSelection(pago.id)}
+                                        data-testid={`checkbox-pago-${pago.id}`}
+                                      />
                                     </div>
-                                    <div className="mt-3 flex items-center space-x-6">
-                                      <div>
-                                        <p className="text-xs text-gray-500">Monto</p>
-                                        <p className="font-semibold text-gray-800">
-                                          {formatCurrency(pago.monto)}
-                                        </p>
+                                    
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-3">
+                                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                          pago.estado === 'vencido' ? 'bg-red-100' : 'bg-orange-100'
+                                        }`}>
+                                          {getStatusIcon(pago.estado)}
+                                        </div>
+                                        <div>
+                                          <h3 className="font-semibold text-gray-800">{pago.concepto}</h3>
+                                          <p className="text-sm text-gray-600">
+                                            Vencimiento: {new Date(pago.fechaVencimiento).toLocaleDateString('es-ES')}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <p className="text-xs text-gray-500">Estado</p>
-                                        {getStatusBadge(pago.estado)}
+                                      <div className="mt-3 flex items-center space-x-6">
+                                        <div>
+                                          <p className="text-xs text-gray-500">Monto</p>
+                                          <p className="font-semibold text-gray-800">
+                                            {formatCurrency(pago.monto)}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs text-gray-500">Estado</p>
+                                          {getStatusBadge(pago.estado)}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -1244,6 +1434,167 @@ export default function TenantDashboard() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Bulk Payment Form Dialog */}
+      <Dialog open={showBulkPaymentDialog} onOpenChange={setShowBulkPaymentDialog}>
+        <DialogContent className="max-w-md" aria-describedby="bulk-payment-form-description">
+          <DialogHeader>
+            <DialogTitle>Pago Múltiple</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mb-4" id="bulk-payment-form-description">
+            {(() => {
+              const selectedInfo = getSelectedPagosInfo();
+              return (
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">{selectedInfo.count}</span> pagos seleccionados
+                  </p>
+                  <div className="space-y-1">
+                    {selectedInfo.selectedPagos.map((pago) => (
+                      <div key={pago.id} className="flex justify-between text-sm">
+                        <span className="text-gray-700">{pago.concepto}</span>
+                        <span className="font-medium text-green-600">{formatCurrency(pago.monto)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Total:</span>
+                      <span className="text-green-600">{formatCurrency(selectedInfo.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          
+          <Form {...bulkPaymentForm}>
+            <form onSubmit={bulkPaymentForm.handleSubmit(onSubmitBulkPaymentForm)} className="space-y-4">
+              <FormField
+                control={bulkPaymentForm.control}
+                name="fechaOperacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de Operación</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-bulk-fecha-operacion" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPaymentForm.control}
+                name="cedulaRif"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cédula - RIF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="V-12345678 o J-123456789" {...field} data-testid="input-bulk-cedula-rif" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPaymentForm.control}
+                name="monto"
+                render={({ field }) => {
+                  // Calculate Bs amount for placeholder based on total selected
+                  const getPlaceholderText = () => {
+                    const selectedInfo = getSelectedPagosInfo();
+                    if (selectedInfo.total > 0 && usdRate?.valor) {
+                      const bsAmount = (selectedInfo.total * parseFloat(usdRate.valor)).toFixed(2);
+                      return `${new Intl.NumberFormat('es-VE', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }).format(parseFloat(bsAmount))} Bs.`;
+                    }
+                    return "Monto total pagado en Bs";
+                  };
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Monto Total Pagado (Bs.)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder={getPlaceholderText()}
+                          {...field} 
+                          data-testid="input-bulk-monto"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={bulkPaymentForm.control}
+                name="tipoOperacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Operación</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value} data-testid="select-bulk-tipo-operacion">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mismo_banco">Transferencia mismo banco</SelectItem>
+                          <SelectItem value="otro_banco">Transferencia desde otro banco</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={bulkPaymentForm.control}
+                name="correoElectronico"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Correo Electrónico</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="usuario@ejemplo.com" 
+                        {...field} 
+                        data-testid="input-bulk-correo-electronico"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowBulkPaymentDialog(false)}
+                  data-testid="button-bulk-cancelar"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={submitBulkPaymentMutation.isPending}
+                  data-testid="button-enviar-pago-multiple"
+                >
+                  {submitBulkPaymentMutation.isPending ? "Procesando..." : "Enviar Pagos"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

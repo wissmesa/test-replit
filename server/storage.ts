@@ -14,9 +14,10 @@ import {
   type InsertTasaCambio,
   type UserWithApartment,
   type PagoWithRelations,
+  type BulkPaymentFormData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql, inArray, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -48,6 +49,7 @@ export interface IStorage {
   deletePago(id: string): Promise<void>;
   updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
   unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
+  applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]>;
   
   // Exchange rate operations
   getTasasCambio(moneda?: string, limite?: number): Promise<TasaCambio[]>;
@@ -423,6 +425,141 @@ export class DatabaseStorage implements IStorage {
           eq(pagos.idUsuario, userId)
         )
       );
+  }
+
+  async applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]> {
+    // Validate that all payments belong to the user and are in correct state
+    const payments = await db
+      .select()
+      .from(pagos)
+      .where(
+        and(
+          inArray(pagos.id, pagoIds),
+          eq(pagos.idUsuario, userId),
+          inArray(pagos.estado, ['pendiente', 'vencido'])
+        )
+      )
+      .orderBy(asc(pagos.fechaVencimiento)); // Sort by due date (oldest first)
+
+    if (payments.length !== pagoIds.length) {
+      throw new Error("Algunos pagos no son válidos o no pertenecen al usuario");
+    }
+
+    // Calculate total amount owed to validate payment amount
+    const totalOwedUsd = payments.reduce((sum, payment) => sum + parseFloat(payment.monto), 0);
+    const paidAmountBs = parseFloat(data.monto);
+    
+    // Get current USD exchange rate
+    const usdRate = await this.getUSDExchangeRate();
+    if (!usdRate) {
+      throw new Error("No se pudo obtener la tasa de cambio USD");
+    }
+
+    const exchangeRate = parseFloat(usdRate.valor);
+    const paidAmountUsd = paidAmountBs / exchangeRate;
+    
+    // Validate that payment doesn't exceed total owed (with small tolerance for rounding)
+    const tolerance = 0.01; // $0.01 tolerance for rounding differences
+    if (paidAmountUsd > totalOwedUsd + tolerance) {
+      throw new Error(`El monto pagado ($${paidAmountUsd.toFixed(2)}) excede el total adeudado ($${totalOwedUsd.toFixed(2)})`);
+    }
+
+    let remainingUsdAmount = paidAmountUsd;
+    
+    // Use transaction to ensure atomicity
+    const results = await db.transaction(async (tx) => {
+      const transactionResults: Pago[] = [];
+      
+      for (const payment of payments) {
+        const paymentAmountUsd = parseFloat(payment.monto);
+        
+        if (remainingUsdAmount <= tolerance) {
+          // No more money to apply
+          break;
+        }
+        
+        if (remainingUsdAmount >= paymentAmountUsd - tolerance) {
+          // Full payment - mark as en_revision
+          const [updatedPayment] = await tx
+            .update(pagos)
+            .set({
+              estado: 'en_revision',
+              fechaPago: new Date(),
+              fechaOperacion: new Date(data.fechaOperacion),
+              cedulaRif: data.cedulaRif,
+              tipoOperacion: data.tipoOperacion,
+              correoElectronico: data.correoElectronico,
+              montoBs: (paymentAmountUsd * exchangeRate).toFixed(2),
+              tasaCambio: usdRate.valor,
+              updatedAt: new Date()
+            })
+            .where(eq(pagos.id, payment.id))
+            .returning();
+
+          transactionResults.push(updatedPayment);
+          remainingUsdAmount -= paymentAmountUsd;
+        } else {
+          // Partial payment - CORRECTED LOGIC
+          const partialAmountUsd = remainingUsdAmount;
+          const remainderAmountUsd = paymentAmountUsd - partialAmountUsd;
+          
+          // Create NEW payment for the partial amount and mark as 'en_revision'
+          const [newPartialPayment] = await tx
+            .insert(pagos)
+            .values({
+              idUsuario: userId,
+              idApartamento: payment.idApartamento,
+              monto: partialAmountUsd.toFixed(2),
+              montoBs: (partialAmountUsd * exchangeRate).toFixed(2),
+              tasaCambio: usdRate.valor,
+              fechaVencimiento: payment.fechaVencimiento,
+              estado: 'en_revision',
+              metodoPago: payment.metodoPago,
+              concepto: payment.concepto,
+              comprobanteUrl: payment.comprobanteUrl,
+              fechaPago: new Date(),
+              fechaOperacion: new Date(data.fechaOperacion),
+              cedulaRif: data.cedulaRif,
+              tipoOperacion: data.tipoOperacion,
+              correoElectronico: data.correoElectronico,
+            } as any)
+            .returning();
+
+          transactionResults.push(newPartialPayment);
+
+          // Update ORIGINAL payment with the remaining amount and keep as 'pendiente'
+          const [updatedOriginalPayment] = await tx
+            .update(pagos)
+            .set({
+              monto: remainderAmountUsd.toFixed(2),
+              montoBs: (remainderAmountUsd * exchangeRate).toFixed(2),
+              tasaCambio: usdRate.valor,
+              updatedAt: new Date()
+            })
+            .where(eq(pagos.id, payment.id))
+            .returning();
+
+          transactionResults.push(updatedOriginalPayment);
+          remainingUsdAmount = 0; // All money has been applied
+          break;
+        }
+      }
+
+      // If there's remaining money, update user balance
+      if (remainingUsdAmount > tolerance) {
+        await tx
+          .update(users)
+          .set({
+            balance: sql`${users.balance} + ${remainingUsdAmount.toFixed(2)}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+      }
+
+      return transactionResults;
+    });
+
+    return results;
   }
 
   async getApartmentsWithUsers(): Promise<any[]> {

@@ -4,7 +4,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const session = require("express-session");
 import { storage } from "./storage";
-import { insertUserSchema, insertApartmentSchema, insertPagoSchema } from "@shared/schema";
+import { insertUserSchema, insertApartmentSchema, insertPagoSchema, BulkPaymentFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { hashPassword, isAuthenticated, isAdmin } from "./auth";
 
@@ -744,6 +744,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error submitting payment:", error);
       res.status(500).json({ message: "No se pudo procesar el pago" });
+    }
+  });
+
+  // Submit bulk payment with form data
+  app.post('/api/pagos/submit-bulk-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Validate bulk payment form data
+      const result = BulkPaymentFormSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: result.error.issues 
+        });
+      }
+      
+      const { pagoIds, ...data } = result.data;
+      
+      // Get original payments for summary calculation
+      const originalPayments = await storage.getPagosByUser(userId);
+      const selectedOriginalPayments = originalPayments.filter(p => pagoIds.includes(p.id));
+      const totalSelectedAmountUsd = selectedOriginalPayments.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+      
+      // Get current exchange rate for summary
+      const exchangeRate = await storage.getUSDExchangeRate();
+      const paidAmountBs = parseFloat(data.monto);
+      const paidAmountUsd = exchangeRate ? paidAmountBs / parseFloat(exchangeRate.valor) : 0;
+      
+      // Apply bulk payment
+      const updatedPayments = await storage.applyBulkPayment(userId, pagoIds, result.data);
+      
+      // Calculate summary statistics
+      const paidInFullCount = updatedPayments.filter(p => p.estado === 'en_revision').length;
+      const partialPayments = updatedPayments.filter(p => p.estado === 'pendiente');
+      const remainingBalance = partialPayments.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+      
+      // Get updated user for balance information
+      const updatedUser = await storage.getUser(userId);
+      
+      res.json({
+        success: true,
+        message: "Pago múltiple procesado exitosamente",
+        summary: {
+          totalPaidBs: paidAmountBs.toFixed(2),
+          totalPaidUsd: paidAmountUsd.toFixed(2),
+          exchangeRate: exchangeRate?.valor || "N/A",
+          selectedPaymentsCount: pagoIds.length,
+          totalSelectedAmountUsd: totalSelectedAmountUsd.toFixed(2),
+          paidInFullCount,
+          partialPaymentRemainingUsd: remainingBalance.toFixed(2),
+          userBalance: updatedUser?.balance || "0.00",
+          processingDate: new Date().toISOString()
+        },
+        details: {
+          processedPayments: updatedPayments.map(p => ({
+            id: p.id,
+            monto: p.monto,
+            montoBs: p.montoBs,
+            estado: p.estado,
+            concepto: p.concepto,
+            fechaVencimiento: p.fechaVencimiento
+          }))
+        }
+      });
+    } catch (error) {
+      console.error("Error processing bulk payment:", error);
+      
+      // Handle specific validation errors
+      if (error instanceof Error) {
+        if (error.message.includes("no son válidos") || error.message.includes("no pertenecen")) {
+          return res.status(400).json({ success: false, message: error.message });
+        }
+        if (error.message.includes("tasa de cambio")) {
+          return res.status(400).json({ success: false, message: error.message });
+        }
+        if (error.message.includes("excede el total adeudado")) {
+          return res.status(400).json({ success: false, message: error.message });
+        }
+      }
+      
+      res.status(500).json({ success: false, message: "No se pudo procesar el pago múltiple" });
     }
   });
 

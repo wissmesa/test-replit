@@ -149,6 +149,11 @@ export const paymentFormSchema = z.object({
   correoElectronico: z.string().email("Email inválido").min(1, "Email requerido")
 });
 
+// Esquema para el formulario de pago múltiple
+export const BulkPaymentFormSchema = paymentFormSchema.extend({
+  pagoIds: z.array(z.string()).nonempty("Debe seleccionar al menos un pago")
+});
+
 export const updatePagoSchema = createInsertSchema(pagos).omit({
   id: true,
   createdAt: true,
@@ -178,6 +183,7 @@ export type Pago = typeof pagos.$inferSelect;
 export type InsertPago = z.infer<typeof insertPagoSchema>;
 export type UpdatePago = z.infer<typeof updatePagoSchema>;
 export type PaymentFormData = z.infer<typeof paymentFormSchema>;
+export type BulkPaymentFormData = z.infer<typeof BulkPaymentFormSchema>;
 
 export type TasaCambio = typeof tasasCambio.$inferSelect;
 export type InsertTasaCambio = z.infer<typeof insertTasaCambioSchema>;
