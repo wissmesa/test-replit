@@ -945,16 +945,14 @@ export default function AdminDashboard() {
 
   const filteredPagos =
     pagos?.filter((pago) => {
-      if (
-        filters.search &&
-        !pago.user.primerNombre
-          .toLowerCase()
-          .includes(filters.search.toLowerCase()) &&
-        !pago.user.primerApellido
-          .toLowerCase()
-          .includes(filters.search.toLowerCase())
-      ) {
-        return false;
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const firstName = (pago.user.primerNombre || "").toLowerCase();
+        const lastName = (pago.user.primerApellido || "").toLowerCase();
+        
+        if (!firstName.includes(searchTerm) && !lastName.includes(searchTerm)) {
+          return false;
+        }
       }
       if (
         filters.apartment &&
