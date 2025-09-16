@@ -3448,7 +3448,7 @@ export default function AdminDashboard() {
                       : editPagoMutation.isPending
                         ? "Actualizando pago..."
                         : bulkPagoMutation.isPending
-                          ? "Generando pagos en masa..."
+                          ? "Generando recibos de pago..."
                           : deletePagoMutation.isPending
                             ? "Eliminando pago..."
                             : "Procesando..."
