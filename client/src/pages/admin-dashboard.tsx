@@ -3254,13 +3254,9 @@ export default function AdminDashboard() {
                           <SelectItem value="sin_especificar">
                             Sin especificar
                           </SelectItem>
-                          <SelectItem value="transferencia">
-                            Transferencia Bancaria
+                          <SelectItem value="efectivo_zelle">
+                            Efectivo/Zelle
                           </SelectItem>
-                          <SelectItem value="pago_movil">Pago Móvil</SelectItem>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="zelle">Zelle</SelectItem>
-                          <SelectItem value="paypal">PayPal</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
