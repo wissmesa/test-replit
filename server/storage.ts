@@ -349,6 +349,46 @@ export class DatabaseStorage implements IStorage {
     return pago as Pago;
   }
 
+  async updatePendingPaymentsWithLatestRate(): Promise<{ updated: number, latestRate: string }> {
+    // Get the latest USD exchange rate
+    const exchangeRate = await this.getUSDExchangeRate();
+    
+    if (!exchangeRate) {
+      throw new Error("No USD exchange rate available");
+    }
+
+    // Get all pending payments
+    const pendingPayments = await db
+      .select()
+      .from(pagos)
+      .where(eq(pagos.estado, 'pendiente'));
+
+    if (pendingPayments.length === 0) {
+      return { updated: 0, latestRate: exchangeRate.valor };
+    }
+
+    // Update each pending payment with new rate and recalculate montoBs
+    const updatePromises = pendingPayments.map(pago => {
+      const newMontoBs = (parseFloat(pago.monto) * parseFloat(exchangeRate.valor)).toFixed(2);
+      
+      return db
+        .update(pagos)
+        .set({
+          montoBs: newMontoBs,
+          tasaCambio: exchangeRate.valor,
+          updatedAt: new Date()
+        })
+        .where(eq(pagos.id, pago.id));
+    });
+
+    await Promise.all(updatePromises);
+
+    return { 
+      updated: pendingPayments.length, 
+      latestRate: exchangeRate.valor 
+    };
+  }
+
   async deletePago(id: string): Promise<void> {
     await db.delete(pagos).where(eq(pagos.id, id));
   }
