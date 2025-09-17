@@ -464,11 +464,8 @@ export class DatabaseStorage implements IStorage {
     const exchangeRate = parseFloat(usdRate.valor);
     const paidAmountUsd = paidAmountBs / exchangeRate;
     
-    // Validate that payment doesn't exceed total owed (with small tolerance for rounding)
+    // Allow overpayments - excess will be added to user balance
     const tolerance = 0.01; // $0.01 tolerance for rounding differences
-    if (paidAmountUsd > totalOwedUsd + tolerance) {
-      throw new Error(`El monto pagado ($${paidAmountUsd.toFixed(2)}) excede el total adeudado ($${totalOwedUsd.toFixed(2)})`);
-    }
 
     let remainingUsdAmount = paidAmountUsd;
     
