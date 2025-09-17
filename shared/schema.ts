@@ -75,6 +75,9 @@ export const pagos = pgTable("pagos", {
   concepto: varchar("concepto").notNull(),
   comprobanteUrl: varchar("comprobante_url"), // URL del comprobante de pago subido
   idTransaccionMultiple: varchar("id_transaccion_multiple"), // UUID para agrupar pagos de transacción múltiple
+  // Campos para transacciones múltiples
+  totalPagadoBs: decimal("total_pagado_bs", { precision: 15, scale: 2 }), // Monto total pagado en Bs para la transacción múltiple
+  tasaCambioOperacion: decimal("tasa_cambio_operacion", { precision: 15, scale: 8 }), // Tasa de cambio usada en la operación múltiple
   // Nuevos campos para el formulario de pago
   fechaOperacion: timestamp("fecha_operacion"),
   cedulaRif: varchar("cedula_rif"),

@@ -469,6 +469,12 @@ export class DatabaseStorage implements IStorage {
 
     let remainingUsdAmount = paidAmountUsd;
     
+    // Store bulk payment info for later use in approval
+    const bulkPaymentInfo = {
+      totalPagadoBs: data.monto,
+      tasaCambioOperacion: usdRate.valor
+    };
+    
     // Use transaction to ensure atomicity
     const results = await db.transaction(async (tx) => {
       const transactionResults: Pago[] = [];
@@ -495,6 +501,8 @@ export class DatabaseStorage implements IStorage {
               montoBs: (paymentAmountUsd * exchangeRate).toFixed(2),
               tasaCambio: usdRate.valor,
               idTransaccionMultiple: transactionId,
+              totalPagadoBs: bulkPaymentInfo.totalPagadoBs,
+              tasaCambioOperacion: bulkPaymentInfo.tasaCambioOperacion,
               updatedAt: new Date()
             })
             .where(eq(pagos.id, payment.id))
@@ -522,6 +530,8 @@ export class DatabaseStorage implements IStorage {
               concepto: payment.concepto,
               comprobanteUrl: payment.comprobanteUrl,
               idTransaccionMultiple: transactionId,
+              totalPagadoBs: bulkPaymentInfo.totalPagadoBs,
+              tasaCambioOperacion: bulkPaymentInfo.tasaCambioOperacion,
               fechaPago: new Date(),
               fechaOperacion: new Date(data.fechaOperacion),
               cedulaRif: data.cedulaRif,
@@ -550,16 +560,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      // If there's remaining money, update user balance
-      if (remainingUsdAmount > tolerance) {
-        await tx
-          .update(users)
-          .set({
-            balance: sql`${users.balance} + ${remainingUsdAmount.toFixed(2)}`,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, userId));
-      }
+      // Note: Balance will be updated during approval if there's overpayment
 
       return transactionResults;
     });
@@ -568,23 +569,71 @@ export class DatabaseStorage implements IStorage {
   }
 
   async approveBulkTransaction(transactionId: string): Promise<Pago[]> {
-    // Update all payments with matching idTransaccionMultiple to 'pagado' status
-    const results = await db
-      .update(pagos)
-      .set({
-        estado: 'pagado',
-        fechaPago: new Date(),
-        updatedAt: new Date()
-      })
-      .where(
-        and(
-          eq(pagos.idTransaccionMultiple, transactionId),
-          eq(pagos.estado, 'en_revision')
+    return await db.transaction(async (tx) => {
+      // Get all payments in this bulk transaction to calculate overpayment
+      const bulkPayments = await tx
+        .select()
+        .from(pagos)
+        .where(
+          and(
+            eq(pagos.idTransaccionMultiple, transactionId),
+            eq(pagos.estado, 'en_revision')
+          )
+        );
+
+      if (bulkPayments.length === 0) {
+        throw new Error("No se encontraron pagos para aprobar");
+      }
+
+      // Get bulk transaction info from first payment (they all have the same values)
+      const firstPayment = bulkPayments[0];
+      const totalPagadoBs = parseFloat(firstPayment.totalPagadoBs || '0');
+      const tasaCambioOperacion = parseFloat(firstPayment.tasaCambioOperacion || '0');
+      const userId = firstPayment.idUsuario;
+
+      if (totalPagadoBs > 0 && tasaCambioOperacion > 0) {
+        // Calculate total amount due in USD
+        const totalDueUsd = bulkPayments.reduce((sum, payment) => 
+          sum + parseFloat(payment.monto), 0
+        );
+
+        // Calculate total paid in USD using the exchange rate from the operation
+        const totalPaidUsd = totalPagadoBs / tasaCambioOperacion;
+
+        // Calculate overpayment
+        const tolerance = 0.01;
+        const overpaymentUsd = Math.max(0, totalPaidUsd - totalDueUsd);
+
+        // If there's overpayment, add it to user balance
+        if (overpaymentUsd > tolerance) {
+          await tx
+            .update(users)
+            .set({
+              balance: sql`${users.balance} + ${overpaymentUsd.toFixed(2)}`,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, userId));
+        }
+      }
+
+      // Update all payments to 'pagado' status
+      const results = await tx
+        .update(pagos)
+        .set({
+          estado: 'pagado',
+          fechaPago: new Date(),
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(pagos.idTransaccionMultiple, transactionId),
+            eq(pagos.estado, 'en_revision')
+          )
         )
-      )
-      .returning();
-    
-    return results;
+        .returning();
+      
+      return results;
+    });
   }
 
   async getApartmentsWithUsers(): Promise<any[]> {
