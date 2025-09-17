@@ -414,43 +414,20 @@ export default function TenantDashboard() {
     const revisionPayments = pagos.filter(p => p.estado === 'en_revision');
     const monthlyFee = pagos.length > 0 ? parseFloat(pagos[0].monto) : 0;
     
-    // Calculate total expected amount (what user should have paid)
-    const totalExpected = pagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    // Calculate total pending debt (what user owes)
+    const totalPendingDebt = [...pendingPayments, ...vencidoPayments].reduce((sum, p) => sum + parseFloat(p.monto), 0);
     
-    // Calculate total actually paid
-    let totalPaid = 0;
+    // User credit from system (overpayments)
+    const userCredit = parseFloat(user.balance || '0');
     
-    // For paid payments, use actual amount paid (montoBs converted to USD)
-    paidPayments.forEach(p => {
-      if (p.montoBs && p.tasaCambio) {
-        // Convert Bs to USD using the exchange rate used for that payment
-        const paidAmountUsd = parseFloat(p.montoBs) / parseFloat(p.tasaCambio);
-        totalPaid += paidAmountUsd;
-      } else {
-        // Fallback to the recorded monto if no specific payment info
-        totalPaid += parseFloat(p.monto);
-      }
-    });
-    
-    // For payments in revision, consider them as paid with the reported amount
-    revisionPayments.forEach(p => {
-      if (p.montoBs && p.tasaCambio) {
-        const paidAmountUsd = parseFloat(p.montoBs) / parseFloat(p.tasaCambio);
-        totalPaid += paidAmountUsd;
-      }
-    });
-    
-    // Calculate balance: what user paid vs what was expected
-    const actualBalance = totalPaid - totalExpected;
-    
-    // User balance from system (legacy overpayment tracking)
-    const userBalance = parseFloat(user.balance || '0');
+    // Current balance = Credit - Pending debt (negative means debt)
+    const currentBalance = userCredit - totalPendingDebt;
     
     return {
-      currentBalance: actualBalance,
+      currentBalance: currentBalance,
       paidPayments: paidPayments.length,
       monthlyFee,
-      availableBalance: userBalance, // Legacy balance for reference
+      availableBalance: userCredit, // System credit for reference
     };
   };
 
@@ -540,15 +517,15 @@ export default function TenantDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Balance Actual</p>
-                  <p className={`text-2xl font-bold ${stats.availableBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatCurrency(stats.availableBalance)}
+                  <p className={`text-2xl font-bold ${stats.currentBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(stats.currentBalance)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {stats.availableBalance < 0 ? 'Deuda pendiente' : stats.availableBalance > 0 ? 'Saldo a favor por pagos en exceso' : 'Al día'}
+                    {stats.currentBalance < 0 ? 'Deuda pendiente' : stats.currentBalance > 0 ? 'Saldo a favor por pagos en exceso' : 'Al día'}
                   </p>
                 </div>
-                <div className={`p-3 rounded-lg ${stats.availableBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
-                  {stats.availableBalance < 0 ? (
+                <div className={`p-3 rounded-lg ${stats.currentBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
+                  {stats.currentBalance < 0 ? (
                     <AlertCircle className="text-red-600 w-6 h-6" />
                   ) : (
                     <CheckCircle className="text-green-600 w-6 h-6" />
