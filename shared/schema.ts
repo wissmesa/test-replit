@@ -155,6 +155,9 @@ export const BulkPaymentFormSchema = paymentFormSchema.extend({
   pagoIds: z.array(z.string()).nonempty("Debe seleccionar al menos un pago")
 });
 
+// Tipo para los datos del formulario de pago múltiple sin pagoIds (para el backend)
+export const BulkPaymentDataSchema = paymentFormSchema;
+
 export const updatePagoSchema = createInsertSchema(pagos).omit({
   id: true,
   createdAt: true,
@@ -185,6 +188,7 @@ export type InsertPago = z.infer<typeof insertPagoSchema>;
 export type UpdatePago = z.infer<typeof updatePagoSchema>;
 export type PaymentFormData = z.infer<typeof paymentFormSchema>;
 export type BulkPaymentFormData = z.infer<typeof BulkPaymentFormSchema>;
+export type BulkPaymentData = z.infer<typeof BulkPaymentDataSchema>;
 
 export type TasaCambio = typeof tasasCambio.$inferSelect;
 export type InsertTasaCambio = z.infer<typeof insertTasaCambioSchema>;

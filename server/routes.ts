@@ -774,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paidAmountUsd = exchangeRate ? paidAmountBs / parseFloat(exchangeRate.valor) : 0;
       
       // Apply bulk payment
-      const updatedPayments = await storage.applyBulkPayment(userId, pagoIds, result.data);
+      const updatedPayments = await storage.applyBulkPayment(userId, pagoIds, data);
       
       // Calculate summary statistics
       const paidInFullCount = updatedPayments.filter(p => p.estado === 'en_revision').length;

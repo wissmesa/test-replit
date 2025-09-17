@@ -15,6 +15,7 @@ import {
   type UserWithApartment,
   type PagoWithRelations,
   type BulkPaymentFormData,
+  type BulkPaymentData,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNull, sql, inArray, asc } from "drizzle-orm";
@@ -50,7 +51,7 @@ export interface IStorage {
   deletePago(id: string): Promise<void>;
   updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
   unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
-  applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]>;
+  applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentData): Promise<Pago[]>;
   approveBulkTransaction(transactionId: string): Promise<Pago[]>;
   
   // Exchange rate operations
@@ -429,7 +430,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]> {
+  async applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentData): Promise<Pago[]> {
     // Generate unique transaction ID for this bulk payment
     const transactionId = randomUUID();
     
