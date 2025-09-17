@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
 import { storage } from "./storage";
 import { insertUserSchema, insertApartmentSchema, insertPagoSchema, BulkPaymentFormSchema } from "@shared/schema";
 import { z } from "zod";
@@ -20,8 +21,12 @@ const registerSchema = insertUserSchema.omit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session configuration
+  // Session configuration with PostgreSQL store
   app.use(session({
+    store: new pgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: 'sessions'
+    }),
     secret: process.env.SESSION_SECRET || 'condominium-secret-key',
     resave: false,
     saveUninitialized: false,
