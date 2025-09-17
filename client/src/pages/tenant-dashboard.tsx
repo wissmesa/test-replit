@@ -1280,7 +1280,35 @@ export default function TenantDashboard() {
             <div className="space-y-4 mb-4" id="payment-form-description">
               <div className="p-3 bg-gray-50 rounded-md">
                 <p className="text-sm text-gray-600">Concepto: <span className="font-medium">{selectedPaymentForForm.concepto}</span></p>
-                <p className="text-sm text-gray-600">Monto: <span className="font-medium text-green-600">{formatCurrency(selectedPaymentForForm.monto)}</span></p>
+                <p className="text-sm text-gray-600">Monto del recibo: <span className="font-medium text-green-600">{formatCurrency(selectedPaymentForForm.monto)}</span></p>
+                
+                {/* Show credit calculation if user has available credit */}
+                {user && parseFloat(user.balance || '0') > 0 && (
+                  <>
+                    <p className="text-sm text-gray-600">Crédito disponible: <span className="font-medium text-blue-600">{formatCurrency(user.balance)}</span></p>
+                    {(() => {
+                      const reciboAmount = parseFloat(selectedPaymentForForm.monto);
+                      const creditoDisponible = parseFloat(user.balance || '0');
+                      const montoNeto = reciboAmount - creditoDisponible;
+                      
+                      if (montoNeto > 0) {
+                        return (
+                          <div className="pt-2 border-t border-gray-200">
+                            <p className="text-sm font-medium text-gray-800">Monto neto a pagar: <span className="text-green-600">{formatCurrency(montoNeto.toFixed(2))}</span></p>
+                            <p className="text-xs text-gray-500">Se aplicará tu crédito automáticamente</p>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="pt-2 border-t border-gray-200">
+                            <p className="text-sm font-medium text-gray-800">Este recibo será pagado completamente con tu crédito</p>
+                            <p className="text-xs text-gray-500">Crédito restante: <span className="text-blue-600">{formatCurrency(Math.abs(montoNeto).toFixed(2))}</span></p>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </>
+                )}
               </div>
             </div>
             
