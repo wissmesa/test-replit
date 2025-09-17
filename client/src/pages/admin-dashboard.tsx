@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import type {
   UserWithApartment,
   Apartment,
@@ -403,6 +403,40 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el pago",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Approve bulk transaction mutation
+  const approveBulkTransactionMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const response = await apiRequest("POST", `/api/pagos/approve-bulk-transaction/${transactionId}`, {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "Éxito",
+        description: data.message || "Transacción múltiple aprobada correctamente",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "No autorizado",
+          description: "Redirigiendo al login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la transacción múltiple",
         variant: "destructive",
       });
     },
@@ -967,6 +1001,26 @@ export default function AdminDashboard() {
     }).format(typeof amount === "string" ? parseFloat(amount) : amount);
   };
 
+  // Group payments in review by bulk transaction ID
+  const groupPaymentsByTransaction = (payments: PagoWithRelations[]) => {
+    const groups: { [key: string]: PagoWithRelations[] } = {};
+    const individual: PagoWithRelations[] = [];
+
+    payments.forEach(pago => {
+      if (pago.estado === "en_revision" && (pago as any).idTransaccionMultiple) {
+        const transactionId = (pago as any).idTransaccionMultiple;
+        if (!groups[transactionId]) {
+          groups[transactionId] = [];
+        }
+        groups[transactionId].push(pago);
+      } else {
+        individual.push(pago);
+      }
+    });
+
+    return { groups, individual };
+  };
+
   const filteredPagos =
     pagos?.filter((pago) => {
       if (filters.search) {
@@ -1011,6 +1065,9 @@ export default function AdminDashboard() {
       return true;
     }) || [];
 
+  // Group payments for bulk transaction display
+  const { groups: transactionGroups, individual: individualPayments } = groupPaymentsByTransaction(filteredPagos || []);
+  
   // Pagination logic for payments
   const totalPayments = filteredPagos.length;
   const totalPagesPayments = Math.ceil(totalPayments / itemsPerPagePayments);
@@ -1439,115 +1496,268 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedPagos.map((pago) => (
-                        <tr
-                          key={pago.id}
-                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="py-4 px-4">
-                            <div className="flex items-center space-x-3">
-                              <Avatar className="w-8 h-8">
-                                <AvatarFallback className="bg-gray-400 text-white text-sm">
-                                  {pago.user
-                                    ? getInitials(
-                                        pago.user.primerNombre,
-                                        pago.user.primerApellido,
-                                      )
-                                    : "SA"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-gray-800">
-                                  {pago.user
-                                    ? `${pago.user.primerNombre} ${pago.user.primerApellido}`
-                                    : "Sin asignar"}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                  {pago.user
-                                    ? pago.user.correo
-                                    : "Propietario sin asignar"}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="font-medium text-gray-800">
-                              Apt. {pago.apartment.numero}
-                            </span>
-                            <p className="text-sm text-gray-600">
-                              Piso {pago.apartment.piso}
-                            </p>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="font-semibold text-gray-800">
-                              {formatCurrency(pago.monto)}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-gray-800">
-                              {new Date(
-                                pago.fechaVencimiento,
-                              ).toLocaleDateString("es-ES")}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            {getStatusBadge(pago.estado)}
-                          </td>
-                          <td className="py-4 px-4">
-                            {(pago as any).comprobanteUrl ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  handleViewDocument(
-                                    (pago as any).comprobanteUrl,
-                                  )
-                                }
-                              >
-                                Ver Comprobante
-                              </Button>
-                            ) : (
-                              <span className="text-gray-400 text-sm">
-                                Sin comprobante
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex space-x-2">
-                              {pago.estado === "en_revision" && (
-                                <Button
-                                  size="sm"
-                                  className="bg-secondary text-white hover:bg-green-600"
-                                  onClick={() =>
-                                    markAsPaidMutation.mutate(pago.id)
-                                  }
-                                  disabled={markAsPaidMutation.isPending}
+                      <>
+                        {/* Render bulk transaction groups first */}
+                        {Object.entries(transactionGroups).map(([transactionId, groupPagos]) => {
+                          const totalGroupAmount = groupPagos.reduce((sum, pago) => sum + parseFloat(pago.monto), 0);
+                          const firstPago = groupPagos[0];
+                          
+                          return (
+                            <React.Fragment key={`group-${transactionId}`}>
+                              {/* Group header row */}
+                              <tr className="border-b-2 border-blue-200 bg-blue-50">
+                                <td colSpan={7} className="py-3 px-4">
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex items-center space-x-3">
+                                      <Badge className="bg-blue-100 text-blue-800 font-medium">
+                                        Transacción Múltiple
+                                      </Badge>
+                                      <span className="font-medium text-gray-800">
+                                        {groupPagos.length} pago(s) - Total: {formatCurrency(totalGroupAmount)}
+                                      </span>
+                                      <span className="text-sm text-gray-600">
+                                        ID: {transactionId.slice(0, 8)}...
+                                      </span>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-600 text-white hover:bg-green-700"
+                                      onClick={() => approveBulkTransactionMutation.mutate(transactionId)}
+                                      disabled={approveBulkTransactionMutation.isPending}
+                                    >
+                                      Aprobar Transacción Completa
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {/* Individual payments in the group */}
+                              {groupPagos.map((pago) => (
+                                <tr
+                                  key={pago.id}
+                                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors bg-blue-25"
                                 >
-                                  Marcar Pagado
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditPago(pago)}
-                              >
-                                {pago.estado === "pagado"
-                                  ? "Ver Detalles"
-                                  : "Editar"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeletePago(pago)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Eliminar pago"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                  <td className="py-4 px-4 pl-8">
+                                    <div className="flex items-center space-x-3">
+                                      <Avatar className="w-8 h-8">
+                                        <AvatarFallback className="bg-gray-400 text-white text-sm">
+                                          {pago.user
+                                            ? getInitials(
+                                                pago.user.primerNombre,
+                                                pago.user.primerApellido,
+                                              )
+                                            : "SA"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="font-medium text-gray-800">
+                                          {pago.user
+                                            ? `${pago.user.primerNombre} ${pago.user.primerApellido}`
+                                            : "Sin asignar"}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                          {pago.user
+                                            ? pago.user.correo
+                                            : "Propietario sin asignar"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <span className="font-medium text-gray-800">
+                                      Apt. {pago.apartment.numero}
+                                    </span>
+                                    <p className="text-sm text-gray-600">
+                                      Piso {pago.apartment.piso}
+                                    </p>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <span className="font-semibold text-gray-800">
+                                      {formatCurrency(pago.monto)}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <span className="text-gray-800">
+                                      {new Date(
+                                        pago.fechaVencimiento,
+                                      ).toLocaleDateString("es-ES")}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    {getStatusBadge(pago.estado)}
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    {(pago as any).comprobanteUrl ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleViewDocument(
+                                            (pago as any).comprobanteUrl,
+                                          )
+                                        }
+                                      >
+                                        Ver Comprobante
+                                      </Button>
+                                    ) : (
+                                      <span className="text-gray-400 text-sm">
+                                        Sin comprobante
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <div className="flex space-x-2">
+                                      {pago.estado === "en_revision" && (
+                                        <Button
+                                          size="sm"
+                                          className="bg-secondary text-white hover:bg-green-600"
+                                          onClick={() =>
+                                            markAsPaidMutation.mutate(pago.id)
+                                          }
+                                          disabled={markAsPaidMutation.isPending}
+                                        >
+                                          Marcar Pagado
+                                        </Button>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditPago(pago)}
+                                      >
+                                        {pago.estado === "pagado"
+                                          ? "Ver Detalles"
+                                          : "Editar"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDeletePago(pago)}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        title="Eliminar pago"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+                        
+                        {/* Render individual payments */}
+                        {paginatedPagos
+                          .filter(pago => !((pago as any).idTransaccionMultiple && pago.estado === "en_revision"))
+                          .map((pago) => (
+                            <tr
+                              key={pago.id}
+                              className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                            >
+                              <td className="py-4 px-4">
+                                <div className="flex items-center space-x-3">
+                                  <Avatar className="w-8 h-8">
+                                    <AvatarFallback className="bg-gray-400 text-white text-sm">
+                                      {pago.user
+                                        ? getInitials(
+                                            pago.user.primerNombre,
+                                            pago.user.primerApellido,
+                                          )
+                                        : "SA"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-gray-800">
+                                      {pago.user
+                                        ? `${pago.user.primerNombre} ${pago.user.primerApellido}`
+                                        : "Sin asignar"}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                      {pago.user
+                                        ? pago.user.correo
+                                        : "Propietario sin asignar"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className="font-medium text-gray-800">
+                                  Apt. {pago.apartment.numero}
+                                </span>
+                                <p className="text-sm text-gray-600">
+                                  Piso {pago.apartment.piso}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className="font-semibold text-gray-800">
+                                  {formatCurrency(pago.monto)}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className="text-gray-800">
+                                  {new Date(
+                                    pago.fechaVencimiento,
+                                  ).toLocaleDateString("es-ES")}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {getStatusBadge(pago.estado)}
+                              </td>
+                              <td className="py-4 px-4">
+                                {(pago as any).comprobanteUrl ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      handleViewDocument(
+                                        (pago as any).comprobanteUrl,
+                                      )
+                                    }
+                                  >
+                                    Ver Comprobante
+                                  </Button>
+                                ) : (
+                                  <span className="text-gray-400 text-sm">
+                                    Sin comprobante
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex space-x-2">
+                                  {pago.estado === "en_revision" && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-secondary text-white hover:bg-green-600"
+                                      onClick={() =>
+                                        markAsPaidMutation.mutate(pago.id)
+                                      }
+                                      disabled={markAsPaidMutation.isPending}
+                                    >
+                                      Marcar Pagado
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditPago(pago)}
+                                  >
+                                    {pago.estado === "pagado"
+                                      ? "Ver Detalles"
+                                      : "Editar"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeletePago(pago)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Eliminar pago"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        }
+                      </>
                     )}
                   </tbody>
                 </table>
@@ -3454,6 +3664,7 @@ export default function AdminDashboard() {
       <LoadingModal
         isOpen={
           markAsPaidMutation.isPending ||
+          approveBulkTransactionMutation.isPending ||
           registerMutation.isPending ||
           createApartmentMutation.isPending ||
           editUserMutation.isPending ||
@@ -3466,15 +3677,17 @@ export default function AdminDashboard() {
         message={
           markAsPaidMutation.isPending
             ? "Actualizando pago..."
-            : registerMutation.isPending
-              ? "Registrando usuario..."
-              : createApartmentMutation.isPending
-                ? "Creando apartamento..."
-                : editUserMutation.isPending
-                  ? "Actualizando usuario..."
-                  : editApartmentMutation.isPending
-                    ? "Actualizando apartamento..."
-                    : createPagoMutation.isPending
+            : approveBulkTransactionMutation.isPending
+              ? "Aprobando transacción múltiple..."
+              : registerMutation.isPending
+                ? "Registrando usuario..."
+                : createApartmentMutation.isPending
+                  ? "Creando apartamento..."
+                  : editUserMutation.isPending
+                    ? "Actualizando usuario..."
+                    : editApartmentMutation.isPending
+                      ? "Actualizando apartamento..."
+                      : createPagoMutation.isPending
                       ? "Creando pago..."
                       : editPagoMutation.isPending
                         ? "Actualizando pago..."

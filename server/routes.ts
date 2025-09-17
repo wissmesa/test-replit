@@ -863,6 +863,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Approve bulk transaction (admin only)
+  app.post('/api/pagos/approve-bulk-transaction/:transactionId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const transactionId = req.params.transactionId;
+      
+      if (!transactionId) {
+        return res.status(400).json({ message: "Transaction ID requerido" });
+      }
+
+      // Approve all payments in the bulk transaction
+      const approvedPayments = await storage.approveBulkTransaction(transactionId);
+      
+      if (approvedPayments.length === 0) {
+        return res.status(404).json({ message: "No se encontraron pagos para aprobar en esta transacción" });
+      }
+
+      res.json({
+        success: true,
+        message: `Se aprobaron ${approvedPayments.length} pagos de la transacción múltiple`,
+        approvedPayments: approvedPayments.map(p => ({
+          id: p.id,
+          concepto: p.concepto,
+          monto: p.monto,
+          estado: p.estado,
+          fechaPago: p.fechaPago
+        }))
+      });
+    } catch (error) {
+      console.error("Error approving bulk transaction:", error);
+      res.status(500).json({ message: "No se pudo aprobar la transacción múltiple" });
+    }
+  });
+
   app.delete('/api/pagos/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const pagoId = req.params.id;

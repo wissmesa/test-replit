@@ -18,6 +18,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNull, sql, inArray, asc } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export interface IStorage {
   // User operations
@@ -50,6 +51,7 @@ export interface IStorage {
   updatePendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
   unassignPendingPaymentsByApartment(apartmentId: number, userId: string): Promise<void>;
   applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]>;
+  approveBulkTransaction(transactionId: string): Promise<Pago[]>;
   
   // Exchange rate operations
   getTasasCambio(moneda?: string, limite?: number): Promise<TasaCambio[]>;
@@ -428,6 +430,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async applyBulkPayment(userId: string, pagoIds: string[], data: BulkPaymentFormData): Promise<Pago[]> {
+    // Generate unique transaction ID for this bulk payment
+    const transactionId = randomUUID();
+    
     // Validate that all payments belong to the user and are in correct state
     const payments = await db
       .select()
@@ -491,6 +496,7 @@ export class DatabaseStorage implements IStorage {
               correoElectronico: data.correoElectronico,
               montoBs: (paymentAmountUsd * exchangeRate).toFixed(2),
               tasaCambio: usdRate.valor,
+              idTransaccionMultiple: transactionId,
               updatedAt: new Date()
             })
             .where(eq(pagos.id, payment.id))
@@ -517,6 +523,7 @@ export class DatabaseStorage implements IStorage {
               metodoPago: payment.metodoPago,
               concepto: payment.concepto,
               comprobanteUrl: payment.comprobanteUrl,
+              idTransaccionMultiple: transactionId,
               fechaPago: new Date(),
               fechaOperacion: new Date(data.fechaOperacion),
               cedulaRif: data.cedulaRif,
@@ -559,6 +566,26 @@ export class DatabaseStorage implements IStorage {
       return transactionResults;
     });
 
+    return results;
+  }
+
+  async approveBulkTransaction(transactionId: string): Promise<Pago[]> {
+    // Update all payments with matching idTransaccionMultiple to 'pagado' status
+    const results = await db
+      .update(pagos)
+      .set({
+        estado: 'pagado',
+        fechaPago: new Date(),
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(pagos.idTransaccionMultiple, transactionId),
+          eq(pagos.estado, 'en_revision')
+        )
+      )
+      .returning();
+    
     return results;
   }
 

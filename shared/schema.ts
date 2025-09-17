@@ -74,6 +74,7 @@ export const pagos = pgTable("pagos", {
   metodoPago: varchar("metodo_pago"),
   concepto: varchar("concepto").notNull(),
   comprobanteUrl: varchar("comprobante_url"), // URL del comprobante de pago subido
+  idTransaccionMultiple: varchar("id_transaccion_multiple"), // UUID para agrupar pagos de transacción múltiple
   // Nuevos campos para el formulario de pago
   fechaOperacion: timestamp("fecha_operacion"),
   cedulaRif: varchar("cedula_rif"),
