@@ -1346,11 +1346,13 @@ export default function TenantDashboard() {
                   control={paymentForm.control}
                   name="monto"
                   render={({ field }) => {
-                    // Calculate Bs amount for placeholder
+                    // Calculate Bs amount for placeholder (net amount after credit)
                     const getPlaceholderText = () => {
-                      if (selectedPaymentForForm && usdRate?.valor) {
-                        const usdAmount = parseFloat(selectedPaymentForForm.monto);
-                        const bsAmount = (usdAmount * parseFloat(usdRate.valor)).toFixed(2);
+                      if (selectedPaymentForForm && usdRate?.valor && user) {
+                        const reciboAmount = parseFloat(selectedPaymentForForm.monto);
+                        const creditoDisponible = parseFloat(user.balance || '0');
+                        const montoNeto = Math.max(0, reciboAmount - creditoDisponible); // Can't be negative
+                        const bsAmount = (montoNeto * parseFloat(usdRate.valor)).toFixed(2);
                         return `${new Intl.NumberFormat('es-VE', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
