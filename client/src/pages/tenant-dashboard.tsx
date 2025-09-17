@@ -540,15 +540,15 @@ export default function TenantDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Balance Actual</p>
-                  <p className={`text-2xl font-bold ${stats.currentBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatCurrency(stats.currentBalance)}
+                  <p className={`text-2xl font-bold ${stats.availableBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(stats.availableBalance)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {stats.currentBalance < 0 ? 'Deuda pendiente' : stats.currentBalance > 0 ? 'Saldo a favor por pagos en exceso' : 'Al día'}
+                    {stats.availableBalance < 0 ? 'Deuda pendiente' : stats.availableBalance > 0 ? 'Saldo a favor por pagos en exceso' : 'Al día'}
                   </p>
                 </div>
-                <div className={`p-3 rounded-lg ${stats.currentBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
-                  {stats.currentBalance < 0 ? (
+                <div className={`p-3 rounded-lg ${stats.availableBalance < 0 ? 'bg-red-100' : 'bg-green-100'}`}>
+                  {stats.availableBalance < 0 ? (
                     <AlertCircle className="text-red-600 w-6 h-6" />
                   ) : (
                     <CheckCircle className="text-green-600 w-6 h-6" />
