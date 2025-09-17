@@ -239,6 +239,7 @@ export default function TenantDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setShowBulkPaymentDialog(false);
       setSelectedPagoIds(new Set());
       bulkPaymentForm.reset();

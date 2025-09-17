@@ -417,6 +417,7 @@ export default function AdminDashboard() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pagos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Éxito",
         description: data.message || "Transacción múltiple aprobada correctamente",
